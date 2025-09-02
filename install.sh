@@ -76,6 +76,22 @@ if dialog --title "Safe install mode" --yesno "Enable Safe Install Mode?\n\nReco
   SAFE_MODE=true
 fi
 
+# Mirror source selection (helps when some mirrors are unstable)
+MIRROR_MODE="auto"
+MIRROR_CHOICE=$(dialog_menu "Select mirror source (if unsure, choose Auto):" \
+  1 "Auto (reflector or default)" \
+  2 "Stable (kernel.org + geo)" \
+  3 "Region: US (kernel.org + US)" \
+  4 "Region: EU (kernel.org + EU)" \
+  5 "Region: Asia (kernel.org + Asia)")
+case "$MIRROR_CHOICE" in
+  2) MIRROR_MODE="stable" ;;
+  3) MIRROR_MODE="us" ;;
+  4) MIRROR_MODE="eu" ;;
+  5) MIRROR_MODE="asia" ;;
+  *) MIRROR_MODE="auto" ;;
+esac
+
 # LANGUAGE / LOCALE selection
 DEFAULT_LOCALE="en_US.UTF-8"
 LOCALE_CHOICES=$(grep -E 'UTF-8$' /usr/share/i18n/SUPPORTED 2>/dev/null | awk '{print $1}' | sort | uniq || echo "$DEFAULT_LOCALE")
@@ -257,7 +273,36 @@ fi
 
 # basic mirror refresh and (optionally) optimize mirrors
 pacman -Sy --noconfirm --needed archlinux-keyring || true
-if [ "$SAFE_MODE" != "true" ]; then
+if [ "$MIRROR_MODE" = "stable" ]; then
+  cat > /etc/pacman.d/mirrorlist <<'ML'
+Server = https://mirrors.edge.kernel.org/archlinux/$repo/os/$arch
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+ML
+  pacman -Syy --noconfirm || true
+elif [ "$MIRROR_MODE" = "us" ]; then
+  cat > /etc/pacman.d/mirrorlist <<'ML'
+Server = https://mirrors.edge.kernel.org/archlinux/$repo/os/$arch
+Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+ML
+  pacman -Syy --noconfirm || true
+elif [ "$MIRROR_MODE" = "eu" ]; then
+  cat > /etc/pacman.d/mirrorlist <<'ML'
+Server = https://mirrors.edge.kernel.org/archlinux/$repo/os/$arch
+Server = https://ftp.halifax.rwth-aachen.de/archlinux/$repo/os/$arch
+Server = https://mirror.netcologne.de/archlinux/$repo/os/$arch
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+ML
+  pacman -Syy --noconfirm || true
+elif [ "$MIRROR_MODE" = "asia" ]; then
+  cat > /etc/pacman.d/mirrorlist <<'ML'
+Server = https://mirrors.edge.kernel.org/archlinux/$repo/os/$arch
+Server = https://ftp.jaist.ac.jp/pub/Linux/ArchLinux/$repo/os/$arch
+Server = https://download.nus.edu.sg/mirror/archlinux/$repo/os/$arch
+Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
+ML
+  pacman -Syy --noconfirm || true
+elif [ "$SAFE_MODE" != "true" ]; then
   # Try to optimize mirrors in the live environment (best-effort)
   if pacman -Sy --noconfirm --needed reflector >/dev/null 2>&1; then
     dialog_msg "Optimizing download mirrors (fastest HTTPS)..."
@@ -266,6 +311,7 @@ if [ "$SAFE_MODE" != "true" ]; then
 else
   # Limit parallel downloads in safe mode to reduce stress on fragile VMs
   sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 1/' /etc/pacman.conf || true
+  sed -i 's/^#\?DisableDownloadTimeout.*/DisableDownloadTimeout = true/' /etc/pacman.conf || true
 fi
 
 # base packages to install (minimal but complete)

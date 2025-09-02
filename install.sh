@@ -15,10 +15,11 @@ set -euo pipefail
 IFS=$'\n\t'
 
 LOG_LIVE="/tmp/arch-installer.log"
-exec > >(tee -a "$LOG_LIVE") 2>&1
+# Note: We'll log important actions manually to avoid interfering with dialog TUI
 
-die(){ echo "ERROR: $*" >&2; exit 1; }
+die(){ echo "ERROR: $*" >&2; echo "ERROR: $*" >> "$LOG_LIVE"; exit 1; }
 have(){ command -v "$1" >/dev/null 2>&1; }
+log_action(){ echo "$(date): $*" >> "$LOG_LIVE"; }
 
 # ensure root
 [ "$(id -u)" -eq 0 ] || die "Run this script as root from the Arch live environment."
@@ -39,6 +40,7 @@ dialog_textbox() { dialog --clear --textbox "$1" 22 76; }
 
 # Prechecks
 echo "=== Arch Guided Installer ==="
+log_action "Arch Guided Installer started"
 echo "Logging to $LOG_LIVE"
 if ! ping -c1 archlinux.org >/dev/null 2>&1; then
   dialog --title "Network check" --yesno "No network detected. Do you want to configure Wi-Fi now using iwctl?" 10 60
@@ -212,8 +214,7 @@ CONFIRM=$(dialog_input "Type the device path again to confirm (e.g. /dev/sda):" 
 if [ "$CONFIRM" != "$TARGET_DISK" ]; then die "Device confirmation mismatch. Aborting."; fi
 
 # Partitioning logic
-log="Arch installer partitioning log"
-echo "Partitioning $TARGET_DISK (UEFI=$UEFI)..." >> "$LOG_LIVE"
+log_action "Starting partitioning of $TARGET_DISK (UEFI=$UEFI)"
 # wipe and create partitions
 wipefs -a "$TARGET_DISK"
 sgdisk -Z "$TARGET_DISK" >/dev/null 2>&1 || true
@@ -319,7 +320,9 @@ case "$VM" in
 esac
 
 # install base
+log_action "Installing packages via pacstrap: ${#BASE_PKGS[@]} base + ${#DESKTOP_PKGS[@]} desktop + ${#THEME_PKGS[@]} theme + ${#VM_PKGS[@]} VM packages"
 pacstrap /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}" || die "pacstrap failed"
+log_action "pacstrap installation completed successfully"
 
 # generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -494,10 +497,10 @@ chown ${USERNAME}:${USERNAME} "\$USER_HOME"
 
 # generate .xinitrc for non-display-manager setups
 if [ "${WM}" != "none" ]; then
-  cat > "\$USER_HOME/.xinitrc" <<'XINIT'
+  cat > "\$USER_HOME/.xinitrc" <<XINIT
 #!/bin/sh
 # auto-generated .xinitrc with theme support
-export XDG_RUNTIME_DIR="/run/user/$(id -u ${USERNAME})"
+export XDG_RUNTIME_DIR="/run/user/\$(id -u)"
 
 # Set environment variables for theming
 export GTK_THEME="Arc-Dark"
@@ -515,7 +518,7 @@ fi
 # set wallpaper (feh) - with fallback to solid color if image missing
 if command -v feh >/dev/null 2>&1; then
   if [ -f /usr/share/backgrounds/arch-custom/default.jpg ]; then
-  feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg &
+    feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg &
   else
     # Fallback to solid color matching theme
     if [ "${OPENBOX_THEME}" = "Raven" ]; then
@@ -1622,7 +1625,9 @@ if [ "${STRIP_LOCALE_YES}" = "true" ]; then
   # remove locale files except chosen locale
   KEEP_LOCALE="${SELECTED_LOCALE%%.*}"
   for d in /usr/share/locale/* ; do
-    [[ "\$d" == *"\$KEEP_LOCALE"* ]] && continue
+    case "\$d" in
+      *"\$KEEP_LOCALE"*) continue ;;
+    esac
     rm -rf "\$d" || true
   done
   # remove docs
@@ -1643,14 +1648,17 @@ systemd-machine-id-setup || true
 CHROOT2
 
 # Install GRUB
+log_action "Installing GRUB bootloader (UEFI=$UEFI)"
 if $UEFI; then
   arch-chroot /mnt /bin/bash -c "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=Arch --recheck" || die "GRUB install failed (UEFI)"
 else
   arch-chroot /mnt /bin/bash -c "grub-install --target=i386-pc $TARGET_DISK" || die "GRUB install failed (BIOS)"
 fi
 arch-chroot /mnt /bin/bash -c "grub-mkconfig -o /boot/grub/grub.cfg" || die "grub-mkconfig failed"
+log_action "GRUB installation and configuration completed"
 
 # final message + copy log into installed system
+log_action "Installation completed successfully - system ready for reboot"
 cp "$LOG_LIVE" /mnt/var/log/arch-installer.log || true
 
 # Build final message with theme info

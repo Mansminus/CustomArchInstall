@@ -85,33 +85,25 @@ LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}
 SELECTED_LOCALE=$(echo $LOCALE_CHOICES | cut -d' ' -f"$LOC_IDX")
 [ -z "$SELECTED_LOCALE" ] && SELECTED_LOCALE="$DEFAULT_LOCALE"
 
-# KEYBOARD layout - back to working wrapper function approach
+# KEYBOARD layout (copy EXACT pattern from locale selection)
 CURRENT_KBD="us"
-
-# Simple keyboard detection
 if [ -f /etc/vconsole.conf ]; then
   DETECTED=$(grep '^KEYMAP=' /etc/vconsole.conf 2>/dev/null | cut -d'=' -f2 | tr -d '"')
   [ -n "$DETECTED" ] && CURRENT_KBD="$DETECTED"
 fi
-
-# Ensure clean variable
 [ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
 
-# Simplify to exact same format as working examples
-KBD_IDX=$(dialog_menu "Choose keyboard layout:" \
-  1 "us" \
-  2 "uk" \
-  3 "de" \
-  4 "fr")
-
-# Simple case statement for selection
-case "$KBD_IDX" in
-  1) SELECTED_KBD="us" ;;
-  2) SELECTED_KBD="uk" ;;  
-  3) SELECTED_KBD="de" ;;
-  4) SELECTED_KBD="fr" ;;
-  *) SELECTED_KBD="us" ;;
-esac
+KBD_CHOICES="us uk de fr es it br ru jp"
+# build dialog menu list EXACTLY like locale does
+i=1
+MENU_ARGS=()
+for kbd in $KBD_CHOICES; do
+  MENU_ARGS+=("$i" "$kbd")
+  i=$((i+1))
+done
+KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" "${MENU_ARGS[@]}")
+SELECTED_KBD=$(echo $KBD_CHOICES | cut -d' ' -f"$KBD_IDX")
+[ -z "$SELECTED_KBD" ] && SELECTED_KBD="us"
 # apply console keymap now
 loadkeys "$SELECTED_KBD" || true
 

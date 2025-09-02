@@ -354,8 +354,24 @@ fi
 PACSTRAP_RC=$?
 set -e
 if [ ${PACSTRAP_RC} -ne 0 ]; then
-  dialog_msg "The base installation step failed.\n\nCommon causes: slow mirrors, temporary network issues, or keyring initialization.\n\nWe will refresh mirrors and you can re-run the installer."
-  die "pacstrap failed with code ${PACSTRAP_RC}"
+  log_action "pacstrap failed (code ${PACSTRAP_RC}). Applying fallback mirror and retrying once."
+  # Fallback: use geo mirror, minimize parallelism, refresh keyring, then retry once
+  echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+  sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 1/' /etc/pacman.conf || true
+  pacman -Syy --noconfirm archlinux-keyring || true
+  dialog_msg "First attempt failed. Switching to a stable mirror and retrying installation once..."
+  set +e
+  if [ "$SAFE_MODE" = "true" ]; then
+    nice -n 10 ionice -c2 -n7 pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+  else
+    pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+  fi
+  PACSTRAP_RC=$?
+  set -e
+  if [ ${PACSTRAP_RC} -ne 0 ]; then
+    dialog_msg "The base installation step failed again.\n\nCommon causes: flaky network or mirrors. Please reboot the ISO and try Safe Install Mode or a different network."
+    die "pacstrap failed after retry (code ${PACSTRAP_RC})"
+  fi
 fi
 log_action "pacstrap installation completed successfully"
 

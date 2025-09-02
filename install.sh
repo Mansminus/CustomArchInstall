@@ -765,7 +765,8 @@ fi
 # Ensure user auto-starts X on TTY1 when no display manager is present
 cat > "\$USER_HOME/.bash_profile" <<'BASHPROFILE'
 #!/bin/bash
-if [ -z "$DISPLAY" ] && [ "${XDG_VTNR:-0}" -eq 1 ]; then
+# Auto-start X on first TTY; guard DISPLAY for strict shells
+if [ -z "${DISPLAY:-}" ] && [ "${XDG_VTNR:-0}" -eq 1 ]; then
   exec startx
 fi
 BASHPROFILE

@@ -571,9 +571,9 @@ ufw default deny incoming
 ufw default allow outgoing
 yes | ufw enable || true
 
-# --- zram for low memory systems (if systemd-zram-generator available) ---
+# --- zram for low memory systems (use official zram-generator) ---
 if [ $(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo) -lt 2048 ]; then
-  pacman -S --noconfirm systemd-zram-generator || true
+  pacman -S --noconfirm zram-generator || true
   cat >/etc/systemd/zram-generator.conf <<'ZRAM'
 [zram0]
 zram-size = ram / 2

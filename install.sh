@@ -532,6 +532,7 @@ echo "${SELECTED_LOCALE} UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=${SELECTED_LOCALE}" > /etc/locale.conf
 echo "KEYMAP=${SELECTED_KBD}" > /etc/vconsole.conf
+echo "FONT=lat9w-16" >> /etc/vconsole.conf
 ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
 hwclock --systohc
 
@@ -661,7 +662,7 @@ QT5CONF
 # --- Browser already installed in outer pacstrap
 
 # --- Clean pacman cache if desired (we'll do final cleanup)
-CHROOT
+CHROOT_CFG
 # end chroot configuration
 
 # Post-chroot tweaks: add configs, xinitrc, theming, remove docs/translations if requested

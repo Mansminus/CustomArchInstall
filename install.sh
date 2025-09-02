@@ -516,6 +516,9 @@ if [ -f "default.jpg" ]; then
 fi
 
 # CHROOT: configure system
+# Ensure theme variables are defined in outer shell for heredoc expansion
+GTK_THEME_NAME="Breeze-Dark"
+ICON_THEME_NAME="Papirus-Dark"
 arch-chroot /mnt /bin/bash -e <<'CHROOT'
 set -euo pipefail
 # Variables from outer environ are not auto-passed, but we will re-create some values inside chroot
@@ -619,15 +622,14 @@ fi
 # --- Fonts / theme configuration ---
 # Fonts already installed via THEME_PKGS
 
+#!/bin/bash
 # --- GTK Theme Configuration ---
 # Set up theme matching the openbox selection
 mkdir -p /etc/gtk-2.0 /etc/gtk-3.0
 
-# Choose GTK theme and icon theme based on openbox theme
-# Use consistent theming - Papirus-Dark is the most polished
-# (Note: Most icon themes have blue folders - can be changed later via lxappearance)
-GTK_THEME_NAME="Breeze-Dark"
-ICON_THEME_NAME="Papirus-Dark"
+# Set sane defaults in case env vars are missing
+: "${GTK_THEME_NAME:=Breeze-Dark}"
+: "${ICON_THEME_NAME:=Papirus-Dark}"
 
 cat > /etc/gtk-3.0/settings.ini <<GTKCONF
 [Settings]

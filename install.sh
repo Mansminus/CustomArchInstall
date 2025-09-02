@@ -424,13 +424,39 @@ esac
 # install base
 dialog_msg "Installing the base system now. This can take a while depending on your internet speed.\n\nPlease wait until it completes."
 log_action "Installing packages via pacstrap: ${#BASE_PKGS[@]} base + ${#DESKTOP_PKGS[@]} desktop + ${#THEME_PKGS[@]} theme + ${#VM_PKGS[@]} VM packages (safe_mode=${SAFE_MODE})"
+
+# Pre-pacstrap preflight: sync time, ensure no stale pacman lock, optionally add temp swap for low RAM, check free space
+timedatectl set-ntp true 2>/dev/null || true
+sleep 1
+rm -f /mnt/var/lib/pacman/db.lck 2>/dev/null || true
+
+SWAP_CREATED=false
+if [ "$LOW_RAM" = "true" ]; then
+  # Create a small temporary swapfile to reduce OOM risk during pacstrap
+  if ! swapon --show | grep -q "/swapfile"; then
+    log_action "Creating temporary swapfile (1G) for stability"
+    fallocate -l 1G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=1024 status=none
+    chmod 600 /swapfile || true
+    mkswap /swapfile >/dev/null 2>&1 || true
+    swapon /swapfile >/dev/null 2>&1 && SWAP_CREATED=true || true
+  fi
+fi
+
+# Ensure at least ~8GB free on the target root filesystem (advisory)
+AVAIL_KB=$(df -Pk /mnt | awk 'NR==2{print $4}')
+if [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt 7000000 ]; then
+  dialog_msg "Warning: Less than ~7GB free on target. Installation may fail or be cramped."
+fi
+
+PACSTRAP_LOG="/tmp/pacstrap.log"
 set +e
 if [ "$SAFE_MODE" = "true" ]; then
-  nice -n 10 ionice -c2 -n7 pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+  nice -n 10 ionice -c2 -n7 pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}" 2>&1 | tee "$PACSTRAP_LOG"
+  PACSTRAP_RC=${PIPESTATUS[0]}
 else
-  pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+  pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}" 2>&1 | tee "$PACSTRAP_LOG"
+  PACSTRAP_RC=${PIPESTATUS[0]}
 fi
-PACSTRAP_RC=$?
 set -e
 if [ ${PACSTRAP_RC} -ne 0 ]; then
   log_action "pacstrap failed (code ${PACSTRAP_RC}). Applying fallback mirror and retrying once."
@@ -438,21 +464,33 @@ if [ ${PACSTRAP_RC} -ne 0 ]; then
   echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /etc/pacman.d/mirrorlist
   sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 1/' /etc/pacman.conf || true
   pacman -Syy --noconfirm archlinux-keyring || true
-  dialog_msg "First attempt failed. Switching to a stable mirror and retrying installation once..."
+  dialog_msg "First attempt failed. Switching to a stable mirror and retrying installation once...\n\nSee $PACSTRAP_LOG for details (last errors will be shown if it fails again)."
   set +e
   if [ "$SAFE_MODE" = "true" ]; then
-    nice -n 10 ionice -c2 -n7 pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+    nice -n 10 ionice -c2 -n7 pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}" 2>&1 | tee "$PACSTRAP_LOG"
+    PACSTRAP_RC=${PIPESTATUS[0]}
   else
-    pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+    pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}" 2>&1 | tee "$PACSTRAP_LOG"
+    PACSTRAP_RC=${PIPESTATUS[0]}
   fi
-  PACSTRAP_RC=$?
   set -e
   if [ ${PACSTRAP_RC} -ne 0 ]; then
-    dialog_msg "The base installation step failed again.\n\nCommon causes: flaky network or mirrors. Please reboot the ISO and try Safe Install Mode or a different network."
+    # Show the last 50 lines of pacstrap log to help diagnose
+    tail -n 50 "$PACSTRAP_LOG" >/tmp/pacstrap_tail.txt 2>/dev/null || true
+    if [ -s /tmp/pacstrap_tail.txt ]; then
+      dialog --title "pacstrap error (last 50 lines)" --textbox /tmp/pacstrap_tail.txt 22 90
+    fi
+    dialog_msg "The base installation step failed again.\n\nLikely causes: target already contains partial files, time skew, low RAM (OOM), disk I/O errors, or package/keyring issues.\n\nLog: $PACSTRAP_LOG."
     die "pacstrap failed after retry (code ${PACSTRAP_RC})"
   fi
 fi
 log_action "pacstrap installation completed successfully"
+
+# Cleanup temporary swap if created
+if [ "${SWAP_CREATED}" = "true" ]; then
+  swapoff /swapfile 2>/dev/null || true
+  rm -f /swapfile 2>/dev/null || true
+fi
 
 # generate fstab
 genfstab -U /mnt >> /mnt/etc/fstab

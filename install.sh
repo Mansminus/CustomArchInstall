@@ -43,8 +43,7 @@ echo "=== Arch Guided Installer ==="
 log_action "Arch Guided Installer started"
 echo "Logging to $LOG_LIVE"
 if ! ping -c1 archlinux.org >/dev/null 2>&1; then
-  dialog --title "Network check" --yesno "No network detected. Do you want to configure Wi-Fi now using iwctl?" 10 60
-  if [ $? -eq 0 ]; then
+  if dialog --title "Network check" --yesno "No network detected. Do you want to configure Wi-Fi now using iwctl?" 10 60; then
     if ! have iwctl; then
       dialog_msg "iwctl not available in this live environment. Use another way to connect (e.g., connect beforehand) and re-run."
     else
@@ -126,10 +125,7 @@ SELECTED_CITY=$(echo $CITIES | cut -d' ' -f"$CIT_IDX")
 TIMEZONE="$SELECTED_REGION/$SELECTED_CITY"
 
 # LANGUAGE PACKING OPTION (translations / docs)
-dialog --title "Language & docs" --yesno "Install only chosen locale and strip other translations/docs/man pages to save disk space? (Recommended for minimal systems)" 12 68
-STRIP_LOCALES=$?
-# 0 = Yes (strip), 1 = No (keep)
-if [ $STRIP_LOCALES -eq 0 ]; then
+if dialog --title "Language & docs" --yesno "Install only chosen locale and strip other translations/docs/man pages to save disk space? (Recommended for minimal systems)" 12 68; then
   STRIP_LOCALE_YES=true
 else
   STRIP_LOCALE_YES=false
@@ -175,8 +171,11 @@ else
 fi
 
 # SSH enabling option (disabled by default)
-dialog --title "Remote access" --yesno "Enable SSH server in the installed system? (disabled by default for security)" 10 60
-if [ $? -eq 0 ]; then ENABLE_SSH=true; else ENABLE_SSH=false; fi
+if dialog --title "Remote access" --yesno "Enable SSH server in the installed system? (disabled by default for security)" 10 60; then
+  ENABLE_SSH=true
+else
+  ENABLE_SSH=false
+fi
 
 # VM support selection
 VM_SUPPORT=$(dialog_menu "Select VM guest tools to install (if any):" \

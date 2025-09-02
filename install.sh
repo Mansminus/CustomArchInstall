@@ -679,6 +679,13 @@ chown ${USERNAME}:${USERNAME} "\$USER_HOME"
 # generate .xinitrc for non-display-manager setups
 if [ "${WM}" != "none" ]; then
   # Write template without expanding variables, then substitute only selected ones
+  EXEC_WM_CMD='exec openbox-session'
+  case "${WM}" in
+    i3) EXEC_WM_CMD='exec i3' ;;
+    dwm) EXEC_WM_CMD='exec dwm' ;;
+    openbox|*) EXEC_WM_CMD='exec openbox-session' ;;
+  esac
+  export EXEC_WM_CMD
   cat > /tmp/.xinitrc.tmpl <<'XINIT'
 #!/bin/sh
 # auto-generated .xinitrc with theme support
@@ -749,13 +756,7 @@ fi
 # start the window manager chosen by installer
 ${EXEC_WM_CMD}
 XINIT
-  # Compute WM exec command at install-time to avoid positional params like $1
-  case "${WM}" in
-    i3) EXEC_WM_CMD='exec i3' ;;
-    dwm) EXEC_WM_CMD='exec dwm' ;;
-    openbox|*) EXEC_WM_CMD='exec openbox-session' ;;
-  esac
-  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" EXEC_WM_CMD="${EXEC_WM_CMD}" \
+  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" EXEC_WM_CMD="\${EXEC_WM_CMD}" \
     envsubst '${OPENBOX_THEME} ${SELECTED_KBD} ${EXEC_WM_CMD}' < /tmp/.xinitrc.tmpl > "\$USER_HOME/.xinitrc"
   rm -f /tmp/.xinitrc.tmpl
   chown ${USERNAME}:${USERNAME} "\$USER_HOME/.xinitrc"

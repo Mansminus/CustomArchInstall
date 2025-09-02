@@ -87,17 +87,39 @@ SELECTED_LOCALE=$(echo $LOCALE_CHOICES | cut -d' ' -f"$LOC_IDX")
 
 # KEYBOARD layout (auto-detect then allow override)
 CURRENT_KBD="us"
-if have localectl; then
-  TMP=$(localectl status 2>/dev/null || true)
-  if echo "$TMP" | grep -qi 'VC Keymap'; then
-    CURRENT_KBD=$(echo "$TMP" | awk -F: '/VC Keymap/ {print $2}' | xargs || echo "us")
-  fi
+
+# Try multiple methods to detect current keyboard layout
+# Method 1: Check if vconsole.conf exists (installed system)
+if [ -f /etc/vconsole.conf ]; then
+  DETECTED_KBD=$(grep '^KEYMAP=' /etc/vconsole.conf 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+  [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
 fi
-# simple common map choices
+
+# Method 2: Try localectl (systemd systems)
+if [ "$CURRENT_KBD" = "us" ] && command -v localectl >/dev/null 2>&1; then
+  DETECTED_KBD=$(localectl status 2>/dev/null | awk '/VC Keymap/ {print $3}' | head -1 || echo "")
+  [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
+fi
+
+# Method 3: Check current console keymap (live environment)
+if [ "$CURRENT_KBD" = "us" ] && command -v dumpkeys >/dev/null 2>&1; then
+  DETECTED_KBD=$(dumpkeys 2>/dev/null | head -1 | grep -o 'keymap "[^"]*"' | cut -d'"' -f2 || echo "")
+  [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
+fi
+
+# Ensure we always have a valid value
+[ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
+
+# simple common map choices  
 KBD_LIST="us uk de fr es it br ru jp"
-i=1; MENU_ARGS=()
-for k in $KBD_LIST; do MENU_ARGS+=("$i" "$k"); i=$((i+1)); done
-KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD) — you can override:" "${MENU_ARGS[@]}")
+i=1
+MENU_ARGS=()
+for k in $KBD_LIST; do 
+  MENU_ARGS+=("$i" "$k")
+  i=$((i+1))
+done
+
+KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" "${MENU_ARGS[@]}")
 SELECTED_KBD=$(echo $KBD_LIST | cut -d' ' -f"$KBD_IDX")
 # apply console keymap now
 loadkeys "$SELECTED_KBD" || true
@@ -105,14 +127,23 @@ loadkeys "$SELECTED_KBD" || true
 # TIMEZONE region/city selection
 # Regions
 REGIONS=$(find /usr/share/zoneinfo -maxdepth 1 -type d ! -name zoneinfo -printf "%f\n" | sort)
-i=1; MENU_ARGS=()
-for r in $REGIONS; do MENU_ARGS+=("$i" "$r"); i=$((i+1)); done
+i=1
+MENU_ARGS=()
+for r in $REGIONS; do 
+  MENU_ARGS+=("$i" "$r")
+  i=$((i+1))
+done
 REG_IDX=$(dialog_menu "Choose timezone region:" "${MENU_ARGS[@]}")
 SELECTED_REGION=$(echo $REGIONS | cut -d' ' -f"$REG_IDX")
+
 # Cities
 CITIES=$(find "/usr/share/zoneinfo/$SELECTED_REGION" -maxdepth 1 -type f -printf "%f\n" | sort)
-i=1; MENU_ARGS=()
-for c in $CITIES; do MENU_ARGS+=("$i" "$c"); i=$((i+1)); done
+i=1
+MENU_ARGS=()
+for c in $CITIES; do 
+  MENU_ARGS+=("$i" "$c")
+  i=$((i+1))
+done
 CIT_IDX=$(dialog_menu "Choose timezone city:" "${MENU_ARGS[@]}")
 SELECTED_CITY=$(echo $CITIES | cut -d' ' -f"$CIT_IDX")
 TIMEZONE="$SELECTED_REGION/$SELECTED_CITY"

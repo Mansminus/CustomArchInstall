@@ -85,10 +85,10 @@ LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}
 SELECTED_LOCALE=$(echo $LOCALE_CHOICES | cut -d' ' -f"$LOC_IDX")
 [ -z "$SELECTED_LOCALE" ] && SELECTED_LOCALE="$DEFAULT_LOCALE"
 
-# KEYBOARD layout - simplified and bulletproof
+# KEYBOARD layout - back to working wrapper function approach
 CURRENT_KBD="us"
 
-# Simple keyboard detection - just default to us if nothing else works
+# Simple keyboard detection
 if [ -f /etc/vconsole.conf ]; then
   DETECTED=$(grep '^KEYMAP=' /etc/vconsole.conf 2>/dev/null | cut -d'=' -f2 | tr -d '"')
   [ -n "$DETECTED" ] && CURRENT_KBD="$DETECTED"
@@ -97,8 +97,8 @@ fi
 # Ensure clean variable
 [ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
 
-# Use direct dialog call - no wrapper function
-KBD_IDX=$(dialog --clear --menu "Choose keyboard layout (detected: $CURRENT_KBD):" 15 50 9 \
+# Build menu properly - this was the real issue
+KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" \
   1 "us" \
   2 "uk" \
   3 "de" \
@@ -107,8 +107,7 @@ KBD_IDX=$(dialog --clear --menu "Choose keyboard layout (detected: $CURRENT_KBD)
   6 "it" \
   7 "br" \
   8 "ru" \
-  9 "jp" \
-  3>&1 1>&2 2>&3)
+  9 "jp")
 
 # Simple case statement for selection
 case "$KBD_IDX" in

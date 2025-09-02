@@ -756,7 +756,7 @@ fi
 XINIT
   OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" \
     envsubst '${OPENBOX_THEME} ${SELECTED_KBD}' < /tmp/.xinitrc.tmpl > "\$USER_HOME/.xinitrc"
-  echo "${EXEC_WM_CMD}" >> "\$USER_HOME/.xinitrc"
+  echo "\${EXEC_WM_CMD}" >> "\$USER_HOME/.xinitrc"
   rm -f /tmp/.xinitrc.tmpl
   chown ${USERNAME}:${USERNAME} "\$USER_HOME/.xinitrc"
   chmod +x "\$USER_HOME/.xinitrc"

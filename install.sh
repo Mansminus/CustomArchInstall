@@ -97,17 +97,12 @@ fi
 # Ensure clean variable
 [ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
 
-# Build menu properly - this was the real issue
-KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" \
+# Simplify to exact same format as working examples
+KBD_IDX=$(dialog_menu "Choose keyboard layout:" \
   1 "us" \
   2 "uk" \
   3 "de" \
-  4 "fr" \
-  5 "es" \
-  6 "it" \
-  7 "br" \
-  8 "ru" \
-  9 "jp")
+  4 "fr")
 
 # Simple case statement for selection
 case "$KBD_IDX" in
@@ -115,11 +110,6 @@ case "$KBD_IDX" in
   2) SELECTED_KBD="uk" ;;  
   3) SELECTED_KBD="de" ;;
   4) SELECTED_KBD="fr" ;;
-  5) SELECTED_KBD="es" ;;
-  6) SELECTED_KBD="it" ;;
-  7) SELECTED_KBD="br" ;;
-  8) SELECTED_KBD="ru" ;;
-  9) SELECTED_KBD="jp" ;;
   *) SELECTED_KBD="us" ;;
 esac
 # apply console keymap now

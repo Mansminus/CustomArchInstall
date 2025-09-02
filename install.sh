@@ -208,7 +208,7 @@ esac
 
 # Openbox theme selection (only if Openbox is chosen)
 if [ "$WM" = "openbox" ]; then
-  OBTHEME=$(dialog_menu "Choose Openbox theme (pairs with Arc-Dark):" \
+  OBTHEME=$(dialog_menu "Choose Openbox theme (pairs with Breeze-Dark):" \
     1 "Raven (dark theme with green accents)" \
     2 "Triste (dark theme with red/burgundy accents)")
   
@@ -360,8 +360,8 @@ BASE_PKGS+=(git wget curl unzip htop)
 # include GRUB and tools
 BASE_PKGS+=(grub os-prober efibootmgr)
 
-# Theming and appearance packages (no redundancy)
-THEME_PKGS=(arc-gtk-theme papirus-icon-theme)
+# Theming and appearance packages (repo-only)
+THEME_PKGS=(papirus-icon-theme)
 THEME_PKGS+=(breeze breeze-gtk lxappearance qt5ct)
 # Essential GUI applications for easy desktop use
 THEME_PKGS+=(ristretto vlc evince galculator flameshot)
@@ -625,7 +625,7 @@ mkdir -p /etc/gtk-2.0 /etc/gtk-3.0
 # Choose GTK theme and icon theme based on openbox theme
 # Use consistent theming - Papirus-Dark is the most polished
 # (Note: Most icon themes have blue folders - can be changed later via lxappearance)
-GTK_THEME_NAME="Arc-Dark"
+GTK_THEME_NAME="Breeze-Dark"
 ICON_THEME_NAME="Papirus-Dark"
 
 cat > /etc/gtk-3.0/settings.ini <<GTKCONF
@@ -681,7 +681,7 @@ if [ "${WM}" != "none" ]; then
 export XDG_RUNTIME_DIR="/run/user/\$(id -u)"
 
 # Set environment variables for theming
-export GTK_THEME="Arc-Dark"
+export GTK_THEME="Breeze-Dark"
 export QT_QPA_PLATFORMTHEME="qt5ct"
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 
@@ -1202,7 +1202,7 @@ font pango:Noto Sans 10
 # Use Mouse+\$mod to drag floating windows
 floating_modifier \$mod
 
-# Theme colors (Arc-Dark inspired)
+# Theme colors (Breeze-Dark inspired)
 set \$bg-color 	         #2d3748
 set \$inactive-bg-color   #2d3748
 set \$text-color          #e2e8f0
@@ -1573,7 +1573,7 @@ configuration {
     window-format: "{w}    {c}   {t}";
     click-to-exit: true;
     show-match: true;
-    theme: "Arc-Dark";
+    theme: "Breeze-Dark";
     color-normal: "#2d3748, #e2e8f0, #2d3748, #5a67d8, #ffffff";
     color-urgent: "#2d3748, #e53e3e, #2d3748, #e53e3e, #ffffff";
     color-active: "#2d3748, #48bb78, #2d3748, #48bb78, #ffffff";
@@ -1671,7 +1671,7 @@ mkdir -p "\$USER_HOME/.config/tint2"
 cat > "\$USER_HOME/.config/tint2/launcher.sh" <<'LAUNCHER'
 #!/bin/bash
 # Modern application launcher for tint2 panel
-rofi -show drun -theme Arc-Dark
+rofi -show drun
 LAUNCHER
 chmod +x "\$USER_HOME/.config/tint2/launcher.sh"
 
@@ -1762,7 +1762,7 @@ chown ${USERNAME}:${USERNAME} "\$USER_HOME/.gtkrc-2.0"
 cat >> "\$USER_HOME/.bashrc" <<'BASHTHEME'
 
 # Theme environment variables
-export GTK_THEME="Arc-Dark"
+export GTK_THEME="Breeze-Dark"
 export QT_QPA_PLATFORMTHEME="qt5ct"
 export QT_AUTO_SCREEN_SCALE_FACTOR=0
 
@@ -1845,7 +1845,7 @@ if [ "$WM" = "openbox" ] && [ -n "$OPENBOX_THEME" ]; then
   THEME_MSG="\nOpenbox theme: ${OPENBOX_THEME}"
 fi
 
-dialog --title "Installation finished" --msgbox "Installation complete!\n\nUser: ${USERNAME}\nLocale: ${SELECTED_LOCALE}\nKeyboard: ${SELECTED_KBD}\nTimezone: ${TIMEZONE}\nWM: ${WM}${THEME_MSG}\nRAM detected: ${TOTAL_RAM_MB} MB\n\nTheme: Arc-Dark + Papirus-Dark + Breeze cursors\n\nA log has been saved to /var/log/arch-installer.log on the installed system.\n\nReboot now." 18 75
+dialog --title "Installation finished" --msgbox "Installation complete!\n\nUser: ${USERNAME}\nLocale: ${SELECTED_LOCALE}\nKeyboard: ${SELECTED_KBD}\nTimezone: ${TIMEZONE}\nWM: ${WM}${THEME_MSG}\nRAM detected: ${TOTAL_RAM_MB} MB\n\nTheme: Breeze-Dark + Papirus-Dark + Breeze cursors\n\nA log has been saved to /var/log/arch-installer.log on the installed system.\n\nReboot now." 18 75
 
 clear
 echo "Installation complete. Reboot the machine to boot into your new Arch system."

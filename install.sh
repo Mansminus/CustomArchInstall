@@ -85,46 +85,44 @@ LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}
 SELECTED_LOCALE=$(echo $LOCALE_CHOICES | cut -d' ' -f"$LOC_IDX")
 [ -z "$SELECTED_LOCALE" ] && SELECTED_LOCALE="$DEFAULT_LOCALE"
 
-# KEYBOARD layout (auto-detect then allow override)
+# KEYBOARD layout - simplified and bulletproof
 CURRENT_KBD="us"
 
-# Try multiple methods to detect current keyboard layout
-# Method 1: Check if vconsole.conf exists (installed system)
+# Simple keyboard detection - just default to us if nothing else works
 if [ -f /etc/vconsole.conf ]; then
-  DETECTED_KBD=$(grep '^KEYMAP=' /etc/vconsole.conf 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
-  [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
+  DETECTED=$(grep '^KEYMAP=' /etc/vconsole.conf 2>/dev/null | cut -d'=' -f2 | tr -d '"')
+  [ -n "$DETECTED" ] && CURRENT_KBD="$DETECTED"
 fi
 
-# Method 2: Try localectl (systemd systems)
-if [ "$CURRENT_KBD" = "us" ] && command -v localectl >/dev/null 2>&1; then
-  DETECTED_KBD=$(localectl status 2>/dev/null | awk '/VC Keymap/ {print $3}' | head -1 || echo "")
-  [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
-fi
+# Ensure clean variable
+[ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
 
-# Method 3: Check current console keymap (live environment)  
-if [ "$CURRENT_KBD" = "us" ] && command -v dumpkeys >/dev/null 2>&1; then
-  DETECTED_KBD=$(dumpkeys 2>/dev/null | head -1 | grep -o 'keymap "[^"]*"' | cut -d'"' -f2 || echo "")
-  [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
-fi
+# Use direct dialog call - no wrapper function
+KBD_IDX=$(dialog --clear --menu "Choose keyboard layout (detected: $CURRENT_KBD):" 15 50 9 \
+  1 "us" \
+  2 "uk" \
+  3 "de" \
+  4 "fr" \
+  5 "es" \
+  6 "it" \
+  7 "br" \
+  8 "ru" \
+  9 "jp" \
+  3>&1 1>&2 2>&3)
 
-# Final safety checks - ensure we always have a valid, non-empty value
-if [ -z "$CURRENT_KBD" ] || [ "$CURRENT_KBD" = "(unset)" ] || [ "$CURRENT_KBD" = "unset" ]; then
-  CURRENT_KBD="us"
-fi
-
-# simple common map choices  
-KBD_LIST="us uk de fr es it br ru jp"
-i=1
-MENU_ARGS=()
-for k in $KBD_LIST; do 
-  MENU_ARGS+=("$i" "$k")
-  i=$((i+1))
-done
-
-KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" "${MENU_ARGS[@]}")
-# Convert string to array for proper indexing
-KBD_ARRAY=($KBD_LIST)
-SELECTED_KBD="${KBD_ARRAY[$((KBD_IDX-1))]}"
+# Simple case statement for selection
+case "$KBD_IDX" in
+  1) SELECTED_KBD="us" ;;
+  2) SELECTED_KBD="uk" ;;  
+  3) SELECTED_KBD="de" ;;
+  4) SELECTED_KBD="fr" ;;
+  5) SELECTED_KBD="es" ;;
+  6) SELECTED_KBD="it" ;;
+  7) SELECTED_KBD="br" ;;
+  8) SELECTED_KBD="ru" ;;
+  9) SELECTED_KBD="jp" ;;
+  *) SELECTED_KBD="us" ;;
+esac
 # apply console keymap now
 loadkeys "$SELECTED_KBD" || true
 

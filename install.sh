@@ -101,14 +101,16 @@ if [ "$CURRENT_KBD" = "us" ] && command -v localectl >/dev/null 2>&1; then
   [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
 fi
 
-# Method 3: Check current console keymap (live environment)
+# Method 3: Check current console keymap (live environment)  
 if [ "$CURRENT_KBD" = "us" ] && command -v dumpkeys >/dev/null 2>&1; then
   DETECTED_KBD=$(dumpkeys 2>/dev/null | head -1 | grep -o 'keymap "[^"]*"' | cut -d'"' -f2 || echo "")
   [ -n "$DETECTED_KBD" ] && CURRENT_KBD="$DETECTED_KBD"
 fi
 
-# Ensure we always have a valid value
-[ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
+# Final safety checks - ensure we always have a valid, non-empty value
+if [ -z "$CURRENT_KBD" ] || [ "$CURRENT_KBD" = "(unset)" ] || [ "$CURRENT_KBD" = "unset" ]; then
+  CURRENT_KBD="us"
+fi
 
 # simple common map choices  
 KBD_LIST="us uk de fr es it br ru jp"
@@ -120,7 +122,9 @@ for k in $KBD_LIST; do
 done
 
 KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" "${MENU_ARGS[@]}")
-SELECTED_KBD=$(echo $KBD_LIST | cut -d' ' -f"$KBD_IDX")
+# Convert string to array for proper indexing
+KBD_ARRAY=($KBD_LIST)
+SELECTED_KBD="${KBD_ARRAY[$((KBD_IDX-1))]}"
 # apply console keymap now
 loadkeys "$SELECTED_KBD" || true
 
@@ -134,7 +138,9 @@ for r in $REGIONS; do
   i=$((i+1))
 done
 REG_IDX=$(dialog_menu "Choose timezone region:" "${MENU_ARGS[@]}")
-SELECTED_REGION=$(echo $REGIONS | cut -d' ' -f"$REG_IDX")
+# Convert string to array for proper indexing
+REG_ARRAY=($REGIONS)
+SELECTED_REGION="${REG_ARRAY[$((REG_IDX-1))]}"
 
 # Cities
 CITIES=$(find "/usr/share/zoneinfo/$SELECTED_REGION" -maxdepth 1 -type f -printf "%f\n" | sort)
@@ -145,7 +151,9 @@ for c in $CITIES; do
   i=$((i+1))
 done
 CIT_IDX=$(dialog_menu "Choose timezone city:" "${MENU_ARGS[@]}")
-SELECTED_CITY=$(echo $CITIES | cut -d' ' -f"$CIT_IDX")
+# Convert string to array for proper indexing
+CIT_ARRAY=($CITIES)
+SELECTED_CITY="${CIT_ARRAY[$((CIT_IDX-1))]}"
 TIMEZONE="$SELECTED_REGION/$SELECTED_CITY"
 
 # LANGUAGE PACKING OPTION (translations / docs)

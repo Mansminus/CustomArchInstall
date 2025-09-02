@@ -81,48 +81,31 @@ for loc in $LOCALE_CHOICES; do
   MENU_ARGS+=("$i" "$loc")
   i=$((i+1))
 done
-LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}") || true
+LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}")
 SELECTED_LOCALE=$(echo $LOCALE_CHOICES | cut -d' ' -f"$LOC_IDX")
 [ -z "$SELECTED_LOCALE" ] && SELECTED_LOCALE="$DEFAULT_LOCALE"
 
-# KEYBOARD layout (copy EXACT pattern from locale selection)
+# KEYBOARD layout (auto-detect then allow override)
 CURRENT_KBD="us"
-if [ -f /etc/vconsole.conf ]; then
-  DETECTED=$(grep '^KEYMAP=' /etc/vconsole.conf 2>/dev/null | cut -d'=' -f2 | tr -d '"')
-  [ -n "$DETECTED" ] && CURRENT_KBD="$DETECTED"
-fi
-[ -z "$CURRENT_KBD" ] && CURRENT_KBD="us"
-
-KBD_CHOICES="us uk de fr es it br ru jp"
-# build dialog menu list EXACTLY like locale does
-i=1
-MENU_ARGS=()
-for kbd in $KBD_CHOICES; do
-  MENU_ARGS+=("$i" "$kbd")
-  i=$((i+1))
-done
-set +e
-KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" "${MENU_ARGS[@]}")
-KBD_RC=$?
-set -e
-KBD_ARRAY=($KBD_CHOICES)
-if [ ${KBD_RC:-1} -ne 0 ]; then
-  SELECTED_KBD="us"
-else
-  if [ -z "${KBD_IDX:-}" ]; then
-    SELECTED_KBD="us"
-  else
-    case "$KBD_IDX" in
-      ''|*[!0-9]*) SELECTED_KBD="us" ;;
-      *)
-        if [ "$KBD_IDX" -ge 1 ] && [ "$KBD_IDX" -le ${#KBD_ARRAY[@]} ]; then
-          SELECTED_KBD="${KBD_ARRAY[$((KBD_IDX-1))]}"
-        else
-          SELECTED_KBD="us"
-        fi
-        ;;
-    esac
+if have localectl; then
+  TMP=$(localectl status 2>/dev/null || true)
+  if echo "$TMP" | grep -qi 'VC Keymap'; then
+    CURRENT_KBD=$(echo "$TMP" | awk -F: '/VC Keymap/ {print $2}' | xargs || echo "us")
   fi
+fi
+# simple common map choices (array-based to avoid IFS issues)
+KBD_CHOICES=(us uk de fr es it br ru jp)
+MENU_ARGS=()
+for idx in "${!KBD_CHOICES[@]}"; do
+  num=$((idx+1))
+  MENU_ARGS+=("$num" "${KBD_CHOICES[$idx]}")
+done
+KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: ${CURRENT_KBD}) — you can override:" "${MENU_ARGS[@]}")
+# map numeric selection back to value safely
+if [ -n "${KBD_IDX}" ] && [ "${KBD_IDX}" -ge 1 ] && [ "${KBD_IDX}" -le ${#KBD_CHOICES[@]} ]; then
+  SELECTED_KBD="${KBD_CHOICES[$((KBD_IDX-1))]}"
+else
+  SELECTED_KBD="${CURRENT_KBD:-us}"
 fi
 # apply console keymap now
 loadkeys "$SELECTED_KBD" || true
@@ -130,29 +113,16 @@ loadkeys "$SELECTED_KBD" || true
 # TIMEZONE region/city selection
 # Regions
 REGIONS=$(find /usr/share/zoneinfo -maxdepth 1 -type d ! -name zoneinfo -printf "%f\n" | sort)
-i=1
-MENU_ARGS=()
-for r in $REGIONS; do 
-  MENU_ARGS+=("$i" "$r")
-  i=$((i+1))
-done
+i=1; MENU_ARGS=()
+for r in $REGIONS; do MENU_ARGS+=("$i" "$r"); i=$((i+1)); done
 REG_IDX=$(dialog_menu "Choose timezone region:" "${MENU_ARGS[@]}")
-# Convert string to array for proper indexing
-REG_ARRAY=($REGIONS)
-SELECTED_REGION="${REG_ARRAY[$((REG_IDX-1))]}"
-
+SELECTED_REGION=$(echo $REGIONS | cut -d' ' -f"$REG_IDX")
 # Cities
 CITIES=$(find "/usr/share/zoneinfo/$SELECTED_REGION" -maxdepth 1 -type f -printf "%f\n" | sort)
-i=1
-MENU_ARGS=()
-for c in $CITIES; do 
-  MENU_ARGS+=("$i" "$c")
-  i=$((i+1))
-done
+i=1; MENU_ARGS=()
+for c in $CITIES; do MENU_ARGS+=("$i" "$c"); i=$((i+1)); done
 CIT_IDX=$(dialog_menu "Choose timezone city:" "${MENU_ARGS[@]}")
-# Convert string to array for proper indexing
-CIT_ARRAY=($CITIES)
-SELECTED_CITY="${CIT_ARRAY[$((CIT_IDX-1))]}"
+SELECTED_CITY=$(echo $CITIES | cut -d' ' -f"$CIT_IDX")
 TIMEZONE="$SELECTED_REGION/$SELECTED_CITY"
 
 # LANGUAGE PACKING OPTION (translations / docs)
@@ -285,7 +255,7 @@ pacman -Sy --noconfirm --needed archlinux-keyring
 
 # base packages to install (minimal but complete)
 BASE_PKGS=(base base-devel linux linux-firmware nano sudo reflector)
-# networking, audio, xorg baseline  
+# networking, audio, xorg baseline
 BASE_PKGS+=(networkmanager inetutils network-manager-applet)
 BASE_PKGS+=(xorg xorg-xinit)
 BASE_PKGS+=(pipewire pipewire-pulse wireplumber pavucontrol)  # audio stack
@@ -556,7 +526,7 @@ fi
 # set wallpaper (feh) - with fallback to solid color if image missing
 if command -v feh >/dev/null 2>&1; then
   if [ -f /usr/share/backgrounds/arch-custom/default.jpg ]; then
-    feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg &
+  feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg &
   else
     # Fallback to solid color matching theme
     if [ "${OPENBOX_THEME}" = "Raven" ]; then

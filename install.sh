@@ -762,6 +762,16 @@ XINIT
   chmod +x "\$USER_HOME/.xinitrc"
 fi
 
+# Ensure user auto-starts X on TTY1 when no display manager is present
+cat > "\$USER_HOME/.bash_profile" <<'BASHPROFILE'
+#!/bin/bash
+if [ -z "$DISPLAY" ] && [ "${XDG_VTNR:-0}" -eq 1 ]; then
+  exec startx
+fi
+BASHPROFILE
+chown ${USERNAME}:${USERNAME} "\$USER_HOME/.bash_profile"
+chmod +x "\$USER_HOME/.bash_profile"
+
 # Enhanced openbox autostart & theming
 if [ "${WM}" = "openbox" ]; then
   mkdir -p "\$USER_HOME/.config/openbox"
@@ -847,7 +857,7 @@ OBAS
     <action name="Execute"><command>thunar</command></action>
   </item>
   <item label="Web Browser">
-    <action name="Execute"><command>sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon'</command></action>
+    <action name="Execute"><command><![CDATA[sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon']]></command></action>
   </item>
   <item label="Text Editor">
     <action name="Execute"><command>geany</command></action>
@@ -1056,7 +1066,7 @@ OBMENU
     </keybind>
     <keybind key="W-w">
       <action name="Execute">
-        <command>sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon'</command>
+        <command><![CDATA[sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon']]></command>
       </action>
     </keybind>
     <keybind key="W-e">

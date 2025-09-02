@@ -81,7 +81,7 @@ for loc in $LOCALE_CHOICES; do
   MENU_ARGS+=("$i" "$loc")
   i=$((i+1))
 done
-LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}")
+LOC_IDX=$(dialog_menu "Choose system locale (UTF-8 preferred):" "${MENU_ARGS[@]}") || true
 SELECTED_LOCALE=$(echo $LOCALE_CHOICES | cut -d' ' -f"$LOC_IDX")
 [ -z "$SELECTED_LOCALE" ] && SELECTED_LOCALE="$DEFAULT_LOCALE"
 
@@ -101,9 +101,29 @@ for kbd in $KBD_CHOICES; do
   MENU_ARGS+=("$i" "$kbd")
   i=$((i+1))
 done
+set +e
 KBD_IDX=$(dialog_menu "Choose keyboard layout (detected: $CURRENT_KBD):" "${MENU_ARGS[@]}")
-SELECTED_KBD=$(echo $KBD_CHOICES | cut -d' ' -f"$KBD_IDX")
-[ -z "$SELECTED_KBD" ] && SELECTED_KBD="us"
+KBD_RC=$?
+set -e
+KBD_ARRAY=($KBD_CHOICES)
+if [ ${KBD_RC:-1} -ne 0 ]; then
+  SELECTED_KBD="us"
+else
+  if [ -z "${KBD_IDX:-}" ]; then
+    SELECTED_KBD="us"
+  else
+    case "$KBD_IDX" in
+      ''|*[!0-9]*) SELECTED_KBD="us" ;;
+      *)
+        if [ "$KBD_IDX" -ge 1 ] && [ "$KBD_IDX" -le ${#KBD_ARRAY[@]} ]; then
+          SELECTED_KBD="${KBD_ARRAY[$((KBD_IDX-1))]}"
+        else
+          SELECTED_KBD="us"
+        fi
+        ;;
+    esac
+  fi
+fi
 # apply console keymap now
 loadkeys "$SELECTED_KBD" || true
 

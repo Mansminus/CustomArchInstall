@@ -38,6 +38,34 @@ dialog_yesno() { dialog --clear --yesno "$1" 10 60; return $?; }
 dialog_msg() { dialog --clear --msgbox "$1" 12 70; }
 dialog_textbox() { dialog --clear --textbox "$1" 22 76; }
 
+# Ensure target disk is not busy before destructive operations
+ensure_disk_not_busy() {
+  local disk="$1"
+  # Unmount target root if mounted
+  umount -R /mnt 2>/dev/null || true
+  # Unmount any mountpoints belonging to this disk's partitions
+  while read -r name mnt; do
+    if [ -n "$mnt" ]; then
+      umount -lf "$mnt" 2>/dev/null || true
+    fi
+  done < <(lsblk -nr -o NAME,MOUNTPOINT "$disk" | awk '$2!=""{print $1" "$2}')
+  # Turn off all swap (best-effort)
+  swapoff -a 2>/dev/null || true
+  # Close dm-crypt mappings on this disk
+  while read -r mapper; do
+    [ -z "$mapper" ] && continue
+    if have cryptsetup; then cryptsetup close "$mapper" 2>/dev/null || true; fi
+  done < <(lsblk -nr -o NAME,TYPE "$disk" | awk '$2=="crypt"{print $1}')
+  # Deactivate LVM and stop mdraid if available
+  if have vgchange; then vgchange -an 2>/dev/null || true; fi
+  if have mdadm; then mdadm --stop --scan 2>/dev/null || true; fi
+  if have dmsetup; then dmsetup remove -f 2>/dev/null || true; fi
+  # Settle and reread partition table
+  udevadm settle 2>/dev/null || true
+  partprobe "$disk" 2>/dev/null || true
+  blockdev --rereadpt "$disk" 2>/dev/null || true
+}
+
 # Prechecks
 echo "=== Arch Guided Installer ==="
 log_action "Arch Guided Installer started"
@@ -244,8 +272,13 @@ if [ "$CONFIRM" != "$TARGET_DISK" ]; then die "Device confirmation mismatch. Abo
 
 # Partitioning logic
 log_action "Starting partitioning of $TARGET_DISK (UEFI=$UEFI)"
-# wipe and create partitions
-wipefs -a "$TARGET_DISK"
+# ensure disk is not busy, then wipe and create partitions
+ensure_disk_not_busy "$TARGET_DISK"
+if ! wipefs -a "$TARGET_DISK" 2>/dev/null; then
+  # Retry with force after settling
+  udevadm settle 2>/dev/null || true
+  wipefs -f -a "$TARGET_DISK" 2>/dev/null || true
+fi
 sgdisk -Z "$TARGET_DISK" >/dev/null 2>&1 || true
 
 if $UEFI; then

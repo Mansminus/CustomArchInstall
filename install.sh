@@ -747,15 +747,16 @@ if command -v tint2 >/dev/null 2>&1; then
 fi
 
 # start the window manager chosen by installer
-case "$1" in
-  i3) exec i3 ;;
-  dwm) exec dwm ;;
-  openbox) exec openbox-session ;;
-  *) exec openbox-session ;;
-esac
+${EXEC_WM_CMD}
 XINIT
-  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" \
-    envsubst '${OPENBOX_THEME} ${SELECTED_KBD}' < /tmp/.xinitrc.tmpl > "\$USER_HOME/.xinitrc"
+  # Compute WM exec command at install-time to avoid positional params like $1
+  case "${WM}" in
+    i3) EXEC_WM_CMD='exec i3' ;;
+    dwm) EXEC_WM_CMD='exec dwm' ;;
+    openbox|*) EXEC_WM_CMD='exec openbox-session' ;;
+  esac
+  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" EXEC_WM_CMD="${EXEC_WM_CMD}" \
+    envsubst '${OPENBOX_THEME} ${SELECTED_KBD} ${EXEC_WM_CMD}' < /tmp/.xinitrc.tmpl > "\$USER_HOME/.xinitrc"
   rm -f /tmp/.xinitrc.tmpl
   chown ${USERNAME}:${USERNAME} "\$USER_HOME/.xinitrc"
   chmod +x "\$USER_HOME/.xinitrc"

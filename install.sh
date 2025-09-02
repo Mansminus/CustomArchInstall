@@ -685,7 +685,7 @@ if [ "${WM}" != "none" ]; then
     dwm) EXEC_WM_CMD='exec dwm' ;;
     openbox|*) EXEC_WM_CMD='exec openbox-session' ;;
   esac
-  export EXEC_WM_CMD
+  # do NOT export EXEC_WM_CMD to avoid accidental expansion in strict shells
   cat > /tmp/.xinitrc.tmpl <<'XINIT'
 #!/bin/sh
 # auto-generated .xinitrc with theme support
@@ -754,7 +754,7 @@ if command -v tint2 >/dev/null 2>&1; then
 fi
 
 XINIT
-  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" EXEC_WM_CMD="\${EXEC_WM_CMD}" \
+  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" \
     envsubst '${OPENBOX_THEME} ${SELECTED_KBD}' < /tmp/.xinitrc.tmpl > "\$USER_HOME/.xinitrc"
   echo "${EXEC_WM_CMD}" >> "\$USER_HOME/.xinitrc"
   rm -f /tmp/.xinitrc.tmpl

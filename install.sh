@@ -425,27 +425,37 @@ esac
 dialog_msg "Installing the base system now. This can take a while depending on your internet speed.\n\nPlease wait until it completes."
 log_action "Installing packages via pacstrap: ${#BASE_PKGS[@]} base + ${#DESKTOP_PKGS[@]} desktop + ${#THEME_PKGS[@]} theme + ${#VM_PKGS[@]} VM packages (safe_mode=${SAFE_MODE})"
 
-# Pre-pacstrap preflight: sync time, ensure no stale pacman lock, optionally add temp swap for low RAM, check free space
+# Pre-pacstrap preflight: sync time, ensure no stale pacman lock, check target free space, optionally add temp swap on target
 timedatectl set-ntp true 2>/dev/null || true
 sleep 1
 rm -f /mnt/var/lib/pacman/db.lck 2>/dev/null || true
 
 SWAP_CREATED=false
-if [ "$LOW_RAM" = "true" ]; then
-  # Create a small temporary swapfile to reduce OOM risk during pacstrap
-  if ! swapon --show | grep -q "/swapfile"; then
-    log_action "Creating temporary swapfile (1G) for stability"
-    fallocate -l 1G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=1024 status=none
-    chmod 600 /swapfile || true
-    mkswap /swapfile >/dev/null 2>&1 || true
-    swapon /swapfile >/dev/null 2>&1 && SWAP_CREATED=true || true
-  fi
-fi
-
-# Ensure at least ~8GB free on the target root filesystem (advisory)
+# Check available space on target root
 AVAIL_KB=$(df -Pk /mnt | awk 'NR==2{print $4}')
 if [ -n "$AVAIL_KB" ] && [ "$AVAIL_KB" -lt 7000000 ]; then
   dialog_msg "Warning: Less than ~7GB free on target. Installation may fail or be cramped."
+fi
+# Create temporary swapfile on target (not the live ISO) to avoid ISO RAM limits
+if [ "$LOW_RAM" = "true" ]; then
+  # Decide swap size based on available space
+  SWAP_MB=0
+  if [ -n "$AVAIL_KB" ]; then
+    if [ "$AVAIL_KB" -ge 1500000 ]; then SWAP_MB=1024; # >= ~1.5GB free
+    elif [ "$AVAIL_KB" -ge 800000 ]; then SWAP_MB=512;  # >= ~800MB free
+    else SWAP_MB=0; fi
+  fi
+  if [ "$SWAP_MB" -gt 0 ]; then
+    log_action "Creating temporary swapfile on target (${SWAP_MB}M) for stability"
+    if ! fallocate -l ${SWAP_MB}M /mnt/swapfile 2>/dev/null; then
+      dd if=/dev/zero of=/mnt/swapfile bs=1M count=${SWAP_MB} status=none || true
+    fi
+    if [ -f /mnt/swapfile ]; then
+      chmod 600 /mnt/swapfile || true
+      mkswap /mnt/swapfile >/dev/null 2>&1 || true
+      swapon /mnt/swapfile >/dev/null 2>&1 && SWAP_CREATED=true || true
+    fi
+  fi
 fi
 
 PACSTRAP_LOG="/tmp/pacstrap.log"
@@ -488,8 +498,8 @@ log_action "pacstrap installation completed successfully"
 
 # Cleanup temporary swap if created
 if [ "${SWAP_CREATED}" = "true" ]; then
-  swapoff /swapfile 2>/dev/null || true
-  rm -f /swapfile 2>/dev/null || true
+  swapoff /mnt/swapfile 2>/dev/null || true
+  rm -f /mnt/swapfile 2>/dev/null || true
 fi
 
 # generate fstab

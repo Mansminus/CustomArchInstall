@@ -678,10 +678,11 @@ chown ${USERNAME}:${USERNAME} "\$USER_HOME"
 
 # generate .xinitrc for non-display-manager setups
 if [ "${WM}" != "none" ]; then
-  cat > "\$USER_HOME/.xinitrc" <<XINIT
+  # Write template without expanding variables, then substitute only selected ones
+  cat > /tmp/.xinitrc.tmpl <<'XINIT'
 #!/bin/sh
 # auto-generated .xinitrc with theme support
-export XDG_RUNTIME_DIR="/run/user/\$(id -u)"
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 
 # Set environment variables for theming
 export GTK_THEME="Breeze-Dark"
@@ -746,13 +747,16 @@ if command -v tint2 >/dev/null 2>&1; then
 fi
 
 # start the window manager chosen by installer
-case "\$1" in
+case "$1" in
   i3) exec i3 ;;
   dwm) exec dwm ;;
   openbox) exec openbox-session ;;
   *) exec openbox-session ;;
 esac
 XINIT
+  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" \
+    envsubst '${OPENBOX_THEME} ${SELECTED_KBD}' < /tmp/.xinitrc.tmpl > "\$USER_HOME/.xinitrc"
+  rm -f /tmp/.xinitrc.tmpl
   chown ${USERNAME}:${USERNAME} "\$USER_HOME/.xinitrc"
   chmod +x "\$USER_HOME/.xinitrc"
 fi

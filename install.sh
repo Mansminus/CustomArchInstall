@@ -70,6 +70,12 @@ LOW_RAM=false
 # Welcome
 dialog --title "Welcome" --msgbox "Welcome to the Arch Guided Installer.\n\nThis installer will ask only essential questions and do the rest automatically.\n\nIt will log actions to $LOG_LIVE\n\nPress OK to continue." 14 68
 
+# Optional: Safe install mode for unstable/slow VMs
+SAFE_MODE=false
+if dialog --title "Safe install mode" --yesno "Enable Safe Install Mode?\n\nRecommended if your VM previously froze.\n- Skips mirror optimization\n- Limits pacman parallel downloads\n- Lowers installer CPU/IO priority\n\nYou can say No if everything runs smoothly." 14 70; then
+  SAFE_MODE=true
+fi
+
 # LANGUAGE / LOCALE selection
 DEFAULT_LOCALE="en_US.UTF-8"
 LOCALE_CHOICES=$(grep -E 'UTF-8$' /usr/share/i18n/SUPPORTED 2>/dev/null | awk '{print $1}' | sort | uniq || echo "$DEFAULT_LOCALE")
@@ -249,8 +255,18 @@ else
   mount "/dev/$ROOT_PART" /mnt
 fi
 
-# basic mirror refresh
-pacman -Sy --noconfirm --needed archlinux-keyring
+# basic mirror refresh and (optionally) optimize mirrors
+pacman -Sy --noconfirm --needed archlinux-keyring || true
+if [ "$SAFE_MODE" != "true" ]; then
+  # Try to optimize mirrors in the live environment (best-effort)
+  if pacman -Sy --noconfirm --needed reflector >/dev/null 2>&1; then
+    dialog_msg "Optimizing download mirrors (fastest HTTPS)..."
+    timeout 90s reflector --protocol https --latest 20 --sort rate --save /etc/pacman.d/mirrorlist >/dev/null 2>&1 || true
+  fi
+else
+  # Limit parallel downloads in safe mode to reduce stress on fragile VMs
+  sed -i 's/^#\?ParallelDownloads.*/ParallelDownloads = 1/' /etc/pacman.conf || true
+fi
 
 # base packages to install (minimal but complete)
 BASE_PKGS=(base base-devel linux linux-firmware nano sudo reflector)
@@ -327,8 +343,20 @@ case "$VM" in
 esac
 
 # install base
-log_action "Installing packages via pacstrap: ${#BASE_PKGS[@]} base + ${#DESKTOP_PKGS[@]} desktop + ${#THEME_PKGS[@]} theme + ${#VM_PKGS[@]} VM packages"
-pacstrap /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}" || die "pacstrap failed"
+dialog_msg "Installing the base system now. This can take a while depending on your internet speed.\n\nPlease wait until it completes."
+log_action "Installing packages via pacstrap: ${#BASE_PKGS[@]} base + ${#DESKTOP_PKGS[@]} desktop + ${#THEME_PKGS[@]} theme + ${#VM_PKGS[@]} VM packages (safe_mode=${SAFE_MODE})"
+set +e
+if [ "$SAFE_MODE" = "true" ]; then
+  nice -n 10 ionice -c2 -n7 pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+else
+  pacstrap -K /mnt "${BASE_PKGS[@]}" "${DESKTOP_PKGS[@]}" "${THEME_PKGS[@]}" "${VM_PKGS[@]}"
+fi
+PACSTRAP_RC=$?
+set -e
+if [ ${PACSTRAP_RC} -ne 0 ]; then
+  dialog_msg "The base installation step failed.\n\nCommon causes: slow mirrors, temporary network issues, or keyring initialization.\n\nWe will refresh mirrors and you can re-run the installer."
+  die "pacstrap failed with code ${PACSTRAP_RC}"
+fi
 log_action "pacstrap installation completed successfully"
 
 # generate fstab

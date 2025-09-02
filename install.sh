@@ -364,14 +364,14 @@ BASE_PKGS+=(grub os-prober efibootmgr)
 THEME_PKGS=(arc-gtk-theme papirus-icon-theme)
 THEME_PKGS+=(breeze breeze-gtk lxappearance qt5ct)
 # Essential GUI applications for easy desktop use
-THEME_PKGS+=(gpicview vlc evince galculator flameshot)
+THEME_PKGS+=(ristretto vlc evince galculator flameshot)
 # System tools with GUI
 THEME_PKGS+=(baobab gnome-system-monitor)
 # Clean font selection  
 THEME_PKGS+=(noto-fonts ttf-dejavu)
 THEME_PKGS+=(feh tint2 rofi)
 # System tray and desktop utilities (no redundancy)
-THEME_PKGS+=(picom volumeicon-pulse arandr clipit)
+THEME_PKGS+=(picom volumeicon arandr parcellite)
 # Additional utilities for polished experience
 THEME_PKGS+=(gvfs gvfs-mtp gvfs-gphoto2 udisks2 xdg-user-dirs)
 # User-friendly desktop tools
@@ -388,7 +388,7 @@ THEME_PKGS+=(mtpaint)
 # optional: small UI tools for openbox/autostart
 DESKTOP_PKGS=()
 if [ "$WM" = "openbox" ]; then
-  DESKTOP_PKGS+=(openbox obconf thunar thunar-archive-plugin)
+  DESKTOP_PKGS+=(openbox obconf-qt thunar thunar-archive-plugin)
   DESKTOP_PKGS+=(file-roller geany)
 elif [ "$WM" = "i3" ]; then
   DESKTOP_PKGS+=(i3-wm i3status i3lock alacritty thunar thunar-archive-plugin)
@@ -713,8 +713,8 @@ elif command -v pavucontrol >/dev/null 2>&1; then
 fi
 
 # start clipboard manager
-if command -v clipit >/dev/null 2>&1; then
-  clipit >/dev/null 2>&1 &
+if command -v parcellite >/dev/null 2>&1; then
+  parcellite >/dev/null 2>&1 &
 fi
 
 # start notification daemon
@@ -802,7 +802,7 @@ nm-applet &
 volumeicon &
 
 # Start clipboard manager
-clipit &
+parcellite &
 
 # Start notification daemon
 dunst &
@@ -829,13 +829,13 @@ OBAS
     <action name="Execute"><command>thunar</command></action>
   </item>
   <item label="Web Browser">
-    <action name="Execute"><command>firefox</command></action>
+    <action name="Execute"><command>sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon'</command></action>
   </item>
   <item label="Text Editor">
     <action name="Execute"><command>geany</command></action>
   </item>
   <item label="Image Viewer">
-    <action name="Execute"><command>gpicview</command></action>
+    <action name="Execute"><command>ristretto</command></action>
   </item>
   <item label="Video Player">
     <action name="Execute"><command>vlc</command></action>
@@ -861,7 +861,7 @@ OBAS
     <action name="Execute"><command>lxappearance</command></action>
   </item>
   <item label="Clipboard Manager">
-    <action name="Execute"><command>clipit</command></action>
+    <action name="Execute"><command>parcellite</command></action>
   </item>
   <item label="Display Settings">
     <action name="Execute"><command>arandr</command></action>
@@ -1038,7 +1038,7 @@ OBMENU
     </keybind>
     <keybind key="W-w">
       <action name="Execute">
-        <command>firefox</command>
+        <command>sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon'</command>
       </action>
     </keybind>
     <keybind key="W-e">
@@ -1067,7 +1067,7 @@ OBMENU
     </keybind>
     <keybind key="W-v">
       <action name="Execute">
-        <command>clipit</command>
+        <command>parcellite</command>
       </action>
     </keybind>
     <keybind key="W-b">
@@ -1318,7 +1318,7 @@ bar {
 exec --no-startup-id picom -b
 exec --no-startup-id nm-applet
 exec --no-startup-id volumeicon
-exec --no-startup-id clipit
+exec --no-startup-id parcellite
 exec --no-startup-id dunst
 exec --no-startup-id blueman-applet
 exec --no-startup-id sh -c 'if [ -f /usr/share/backgrounds/arch-custom/default.jpg ]; then feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg; else xsetroot -solid "#1a1a1a"; fi'
@@ -1704,7 +1704,7 @@ cat > "\$USER_HOME/.config/dunst/dunstrc" <<'DUNSTCONF'
     sticky_history = yes
     history_length = 20
     dmenu = rofi -dmenu -p dunst:
-    browser = firefox
+    browser = xdg-open
     always_run_script = true
     title = Dunst
     class = Dunst
@@ -1765,7 +1765,7 @@ alias screenshot='flameshot gui'
 alias lock='i3lock -c 000000'
 alias files='thunar'
 alias calc='galculator'
-alias clipboard='clipit'
+alias clipboard='parcellite'
 alias bluetooth='blueman-manager'
 alias paint='mtpaint'
 

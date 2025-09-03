@@ -401,6 +401,11 @@ elif [ "$WM" = "dwm" ]; then
   echo "Note: DWM requires building from source. Installing i3 as fallback."
 fi
 
+# Add a graphical display manager when a desktop WM is chosen
+if [ "$WM" != "none" ]; then
+  DESKTOP_PKGS+=(lightdm lightdm-gtk-greeter)
+fi
+
 # browser choice - balance between performance and functionality
 if [ "$TOTAL_RAM_MB" -lt 1024 ]; then
   BROWSER_PKG="falkon"       # lightweight Qt browser, still functional
@@ -526,6 +531,10 @@ if [ ! -d /mnt/tmp/installer/configs ]; then
   unzip -q /tmp/installer.zip -d /tmp
   cp -r /tmp/CustomArchInstall-main/configs /mnt/tmp/installer/
 fi
+# Verify configs are staged
+if [ ! -d /mnt/tmp/installer/configs ]; then
+  die "Failed to stage configuration templates; cannot continue."
+fi
 
 # CHROOT: configure system
 # Ensure theme variables are defined in outer shell for heredoc expansion
@@ -576,6 +585,12 @@ systemctl enable cups
 systemctl enable udisks2
 # Enable Bluetooth support
 systemctl enable bluetooth
+
+# Enable LightDM for graphical login if a desktop WM is selected
+if [ "${WM}" != "none" ]; then
+  pacman -S --noconfirm lightdm lightdm-gtk-greeter || true
+  systemctl enable lightdm || true
+fi
 
 # --- Firewall (ufw) ---
 pacman -S --noconfirm ufw || true
@@ -638,9 +653,21 @@ fi
 mkdir -p /etc/gtk-2.0 /etc/gtk-3.0 /etc/xdg/qt5ct
 : "${GTK_THEME_NAME:=Breeze-Dark}"
 : "${ICON_THEME_NAME:=Papirus-Dark}"
-envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/system/gtk-3.0/settings.ini > /etc/gtk-3.0/settings.ini
-envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/system/gtk-2.0/gtkrc > /etc/gtk-2.0/gtkrc
-cp /tmp/installer/configs/system/xdg/qt5ct/qt5ct.conf /etc/xdg/qt5ct/qt5ct.conf
+if [ -f /tmp/installer/configs/system/gtk-3.0/settings.ini ]; then
+  envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/system/gtk-3.0/settings.ini > /etc/gtk-3.0/settings.ini || true
+else
+  echo "Warning: missing GTK3 settings template; skipping"
+fi
+if [ -f /tmp/installer/configs/system/gtk-2.0/gtkrc ]; then
+  envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/system/gtk-2.0/gtkrc > /etc/gtk-2.0/gtkrc || true
+else
+  echo "Warning: missing GTK2 settings template; skipping"
+fi
+if [ -f /tmp/installer/configs/system/xdg/qt5ct/qt5ct.conf ]; then
+  cp /tmp/installer/configs/system/xdg/qt5ct/qt5ct.conf /etc/xdg/qt5ct/qt5ct.conf || true
+else
+  echo "Warning: missing qt5ct template; skipping"
+fi
 
 # --- Browser already installed in outer pacstrap
 
@@ -675,11 +702,6 @@ if [ "${WM}" != "none" ]; then
   chmod +x "$USER_HOME/.xinitrc"
 fi
 
-# Ensure user auto-starts X on TTY1 when no display manager is present
-cp /tmp/installer/configs/user/bash_profile "$USER_HOME/.bash_profile"
-chown ${USERNAME}:${USERNAME} "$USER_HOME/.bash_profile"
-chmod +x "$USER_HOME/.bash_profile"
-
 # Enhanced openbox autostart & theming
 if [ "${WM}" = "openbox" ]; then
   mkdir -p "$USER_HOME/.config/openbox"
@@ -695,10 +717,14 @@ if [ "${WM}" = "openbox" ]; then
     else
       curl -L "https://github.com/addy-dclxvi/openbox-theme-collections/archive/master.zip" -o themes.zip && unzip -q themes.zip && mv openbox-theme-collections-master/* .
     fi
+    # Install the selected theme to user's themes directory
     mkdir -p "$USER_HOME/.themes"
     if [ -d "${OPENBOX_THEME}" ]; then
       cp -r "${OPENBOX_THEME}" "$USER_HOME/.themes/"
       chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.themes/${OPENBOX_THEME}"
+    else
+      echo "Selected Openbox theme '${OPENBOX_THEME}' not found in collection; falling back to Clearlooks"
+      OPENBOX_THEME="Clearlooks"
     fi
     cd /
     rm -rf /tmp/openbox-themes
@@ -869,12 +895,24 @@ mkdir -p "$USER_HOME/.config/tint2" "$USER_HOME/.icons/default"
 mkdir -p "$USER_HOME/.config/rofi" "$USER_HOME/.config/alacritty"
 
 # User GTK configuration (coordinated with openbox theme choice)
-GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/user/gtk-3.0/settings.ini.tmpl > "$USER_HOME/.config/gtk-3.0/settings.ini"
-GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/user/gtk-2.0/gtkrc.tmpl > "$USER_HOME/.gtkrc-2.0"
+if [ -f /tmp/installer/configs/user/gtk-3.0/settings.ini.tmpl ]; then
+  GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/user/gtk-3.0/settings.ini.tmpl > "$USER_HOME/.config/gtk-3.0/settings.ini" || true
+else
+  echo "Warning: missing user GTK3 template; skipping"
+fi
+if [ -f /tmp/installer/configs/user/gtk-2.0/gtkrc.tmpl ]; then
+  GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" envsubst '${GTK_THEME_NAME} ${ICON_THEME_NAME}' < /tmp/installer/configs/user/gtk-2.0/gtkrc.tmpl > "$USER_HOME/.gtkrc-2.0" || true
+else
+  echo "Warning: missing user GTK2 template; skipping"
+fi
 
 # Cursor theme configuration
 mkdir -p "$USER_HOME/.icons/default"
-cp /tmp/installer/configs/user/icons/default/index.theme "$USER_HOME/.icons/default/index.theme"
+if [ -f /tmp/installer/configs/user/icons/default/index.theme ]; then
+  cp /tmp/installer/configs/user/icons/default/index.theme "$USER_HOME/.icons/default/index.theme" || true
+else
+  echo "Warning: missing cursor theme index; skipping"
+fi
 
 # Enhanced Tint2 configuration coordinated with selected theme
 ACCENT_COLOR_GREEN="#4a5d4a"
@@ -889,22 +927,42 @@ else
   ACCENT_COLOR="$ACCENT_COLOR_RED"
   ACCENT_BORDER="$ACCENT_BORDER_RED"
 fi
-ACCENT_COLOR="$ACCENT_COLOR" ACCENT_BORDER="$ACCENT_BORDER" envsubst '${ACCENT_COLOR} ${ACCENT_BORDER}' < /tmp/installer/configs/user/tint2/tint2rc.tmpl > "$USER_HOME/.config/tint2/tint2rc"
+if [ -f /tmp/installer/configs/user/tint2/tint2rc.tmpl ]; then
+  ACCENT_COLOR="$ACCENT_COLOR" ACCENT_BORDER="$ACCENT_BORDER" envsubst '${ACCENT_COLOR} ${ACCENT_BORDER}' < /tmp/installer/configs/user/tint2/tint2rc.tmpl > "$USER_HOME/.config/tint2/tint2rc" || true
+else
+  echo "Warning: missing tint2 template; skipping"
+fi
 
 # Rofi configuration for modern app launcher (theme-coordinated)
-ICON_THEME_NAME="${ICON_THEME_NAME}" envsubst '${ICON_THEME_NAME}' < /tmp/installer/configs/user/rofi/config.rasi.tmpl > "$USER_HOME/.config/rofi/config.rasi"
+if [ -f /tmp/installer/configs/user/rofi/config.rasi.tmpl ]; then
+  ICON_THEME_NAME="${ICON_THEME_NAME}" envsubst '${ICON_THEME_NAME}' < /tmp/installer/configs/user/rofi/config.rasi.tmpl > "$USER_HOME/.config/rofi/config.rasi" || true
+else
+  echo "Warning: missing rofi template; skipping"
+fi
 
 # Alacritty terminal configuration
-cp /tmp/installer/configs/user/alacritty/alacritty.yml "$USER_HOME/.config/alacritty/alacritty.yml"
+if [ -f /tmp/installer/configs/user/alacritty/alacritty.yml ]; then
+  cp /tmp/installer/configs/user/alacritty/alacritty.yml "$USER_HOME/.config/alacritty/alacritty.yml" || true
+else
+  echo "Warning: missing alacritty config; skipping"
+fi
 
 # Create launcher script for tint2 panel
 mkdir -p "$USER_HOME/.config/tint2"
-cp /tmp/installer/configs/user/tint2/launcher.sh "$USER_HOME/.config/tint2/launcher.sh"
-chmod +x "$USER_HOME/.config/tint2/launcher.sh"
+if [ -f /tmp/installer/configs/user/tint2/launcher.sh ]; then
+  cp /tmp/installer/configs/user/tint2/launcher.sh "$USER_HOME/.config/tint2/launcher.sh" || true
+  chmod +x "$USER_HOME/.config/tint2/launcher.sh" || true
+else
+  echo "Warning: missing tint2 launcher script; skipping"
+fi
 
 # Create polished dunst notification configuration
 mkdir -p "$USER_HOME/.config/dunst"
-cp /tmp/installer/configs/user/dunst/dunstrc "$USER_HOME/.config/dunst/dunstrc"
+if [ -f /tmp/installer/configs/user/dunst/dunstrc ]; then
+  cp /tmp/installer/configs/user/dunst/dunstrc "$USER_HOME/.config/dunst/dunstrc" || true
+else
+  echo "Warning: missing dunst config; skipping"
+fi
 
 # Set ownership for all user configuration files
 chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.config"

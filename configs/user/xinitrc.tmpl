@@ -1,0 +1,67 @@
+#!/bin/sh
+# auto-generated .xinitrc with theme support
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
+# Set environment variables for theming
+export GTK_THEME="Breeze-Dark"
+export QT_QPA_PLATFORMTHEME="qt5ct"
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+
+# keyboard
+setxkbmap ${SELECTED_KBD} 2>/dev/null || true
+
+# Start compositor for transparency and effects (optional)
+if command -v picom >/dev/null 2>&1; then
+  picom -b &
+fi
+
+# set wallpaper (feh) - with fallback to solid color if image missing
+if command -v feh >/dev/null 2>&1; then
+  if [ -f /usr/share/backgrounds/arch-custom/default.jpg ]; then
+  feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg &
+  else
+    # Fallback to solid color matching theme
+    if [ "${OPENBOX_THEME}" = "Raven" ]; then
+      xsetroot -solid "#1a2e1a" &  # Dark green
+    elif [ "${OPENBOX_THEME}" = "Triste" ]; then
+      xsetroot -solid "#2e1a1a" &  # Dark red
+    else
+      xsetroot -solid "#1a1a1a" &  # Dark gray
+    fi
+  fi
+fi
+
+# start nm-applet (NetworkManager applet) if available
+if command -v nm-applet >/dev/null 2>&1; then
+  nm-applet >/dev/null 2>&1 &
+fi
+
+# start volume control applet
+if command -v pasystray >/dev/null 2>&1; then
+  pasystray >/dev/null 2>&1 &
+elif command -v pavucontrol >/dev/null 2>&1; then
+  # Just make pavucontrol easily accessible via right-click menu
+  true
+fi
+
+# start clipboard manager
+if command -v parcellite >/dev/null 2>&1; then
+  parcellite >/dev/null 2>&1 &
+fi
+
+# start notification daemon
+if command -v dunst >/dev/null 2>&1; then
+  dunst >/dev/null 2>&1 &
+fi
+
+# start bluetooth applet if available
+if command -v blueman-applet >/dev/null 2>&1; then
+  blueman-applet >/dev/null 2>&1 &
+fi
+
+# start panel if tint2 exists
+if command -v tint2 >/dev/null 2>&1; then
+  tint2 >/dev/null 2>&1 &
+fi
+
+

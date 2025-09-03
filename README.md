@@ -58,6 +58,16 @@ chmod +x install.sh
 sudo ./install.sh
 ```
 
+### New Structure (Configs externalized)
+- The installer now sources configuration templates from `configs/` instead of embedding them in `install.sh`.
+- If you clone the repo, the script will copy `configs/` into the target and render them via envsubst.
+- If you only download `install.sh`, it will fetch the repository archive at runtime to obtain `configs/`.
+
+Key locations used during install:
+- System templates: `/tmp/installer/configs/system/...`
+- User templates: `/tmp/installer/configs/user/...`
+
+
 ## 🎯 What You Get
 
 ### **Minimal but Complete**

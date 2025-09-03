@@ -1,0 +1,40 @@
+# Openbox autostart with full desktop experience
+# Start compositor for transparency and smooth effects
+picom -b &
+
+# Set wallpaper with fallback
+if [ -f /usr/share/backgrounds/arch-custom/default.jpg ]; then
+feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg &
+else
+  # Fallback to solid color matching theme
+  if [ "${OPENBOX_THEME}" = "Raven" ]; then
+    xsetroot -solid "#1a2e1a" &  # Dark green
+  elif [ "${OPENBOX_THEME}" = "Triste" ]; then
+    xsetroot -solid "#2e1a1a" &  # Dark red
+  else
+    xsetroot -solid "#1a1a1a" &  # Dark gray
+  fi
+fi
+
+# Start network applet
+nm-applet &
+
+# Start volume control in system tray
+volumeicon &
+
+# Start clipboard manager
+parcellite &
+
+# Start notification daemon
+dunst &
+
+# Start bluetooth applet (if available)
+blueman-applet &
+
+# Start panel
+tint2 &
+
+# Set cursor theme
+xsetroot -cursor_name left_ptr &
+
+

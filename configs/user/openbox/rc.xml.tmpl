@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc"
+                xmlns:xi="http://www.w3.org/2001/XInclude">
+  <theme>
+    <name>${OPENBOX_THEME:-Clearlooks}</name>
+    <titleLayout>NLIMC</titleLayout>
+    <keepBorder>yes</keepBorder>
+    <animateIconify>yes</animateIconify>
+    <font place="ActiveWindow"><name>Noto Sans</name><size>9</size><weight>bold</weight><slant>normal</slant></font>
+    <font place="InactiveWindow"><name>Noto Sans</name><size>9</size><weight>normal</weight><slant>normal</slant></font>
+    <font place="MenuHeader"><name>Noto Sans</name><size>10</size><weight>bold</weight><slant>normal</slant></font>
+    <font place="MenuItem"><name>Noto Sans</name><size>9</size><weight>normal</weight><slant>normal</slant></font>
+    <font place="ActiveOnScreenDisplay"><name>Noto Sans</name><size>9</size><weight>bold</weight><slant>normal</slant></font>
+    <font place="InactiveOnScreenDisplay"><name>Noto Sans</name><size>9</size><weight>normal</weight><slant>normal</slant></font>
+  </theme>
+  <desktops>
+    <number>4</number>
+    <firstdesk>1</firstdesk>
+    <names>
+      <name>Desktop 1</name>
+      <name>Desktop 2</name>
+      <name>Desktop 3</name>
+      <name>Desktop 4</name>
+    </names>
+    <popupTime>875</popupTime>
+  </desktops>
+  <keyboard>
+    <chainQuitKey>C-g</chainQuitKey>
+    <keybind key="A-F4"><action name="Close"/></keybind>
+    <keybind key="A-Tab"><action name="NextWindow"></action></keybind>
+    <keybind key="W-Return"><action name="Execute"><command>alacritty</command></action></keybind>
+    <keybind key="W-d"><action name="Execute"><command>rofi -show drun</command></action></keybind>
+    <keybind key="W-f"><action name="Execute"><command>thunar</command></action></keybind>
+    <keybind key="W-w"><action name="Execute"><command><![CDATA[sh -c 'command -v firefox >/dev/null 2>&1 && exec firefox || exec falkon']]></command></action></keybind>
+    <keybind key="W-e"><action name="Execute"><command>geany</command></action></keybind>
+    <keybind key="Print"><action name="Execute"><command>flameshot gui</command></action></keybind>
+    <keybind key="W-Print"><action name="Execute"><command>flameshot full -p ~/Pictures</command></action></keybind>
+    <keybind key="W-l"><action name="Execute"><command>i3lock -c 000000</command></action></keybind>
+    <keybind key="W-v"><action name="Execute"><command>parcellite</command></action></keybind>
+    <keybind key="W-b"><action name="Execute"><command>blueman-manager</command></action></keybind>
+    <keybind key="W-i"><action name="Execute"><command>mtpaint</command></action></keybind>
+    <keybind key="C-A-Left"><action name="GoToDesktop"><to>left</to><wrap>no</wrap></action></keybind>
+    <keybind key="C-A-Right"><action name="GoToDesktop"><to>right</to><wrap>no</wrap></action></keybind>
+  </keyboard>
+  <menu>
+    <file>/home/${USERNAME}/.config/openbox/menu.xml</file>
+    <hideDelay>200</hideDelay>
+    <middle>no</middle>
+    <submenuShowDelay>100</submenuShowDelay>
+    <submenuHideDelay>400</submenuHideDelay>
+    <applicationIcons>yes</applicationIcons>
+    <manageDesktops>yes</manageDesktops>
+  </menu>
+  <applications>
+    <application class="*"><decor>yes</decor></application>
+  </applications>
+</openbox_config>
+
+

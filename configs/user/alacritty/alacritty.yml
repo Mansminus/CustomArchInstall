@@ -1,0 +1,66 @@
+# Alacritty configuration
+window:
+  dimensions:
+    columns: 100
+    lines: 30
+  padding:
+    x: 8
+    y: 8
+  decorations: full
+  startup_mode: Windowed
+
+scrolling:
+  history: 10000
+
+font:
+  normal:
+    family: 'Noto Sans Mono'
+    style: Regular
+  bold:
+    family: 'Noto Sans Mono'
+    style: Bold
+  italic:
+    family: 'Noto Sans Mono'
+    style: Italic
+  size: 11.0
+
+colors:
+  primary:
+    background: '0x2d3748'
+    foreground: '0xe2e8f0'
+  normal:
+    black:   '0x2d3748'
+    red:     '0xe53e3e'
+    green:   '0x48bb78'
+    yellow:  '0xecc94b'
+    blue:    '0x5a67d8'
+    magenta: '0x9f7aea'
+    cyan:    '0x4fd1c7'
+    white:   '0xe2e8f0'
+  bright:
+    black:   '0x4a5568'
+    red:     '0xf56565'
+    green:   '0x68d391'
+    yellow:  '0xf6e05e'
+    blue:    '0x7c3aed'
+    magenta: '0xb794f6'
+    cyan:    '0x63b3ed'
+    white:   '0xffffff'
+
+bell:
+  animation: EaseOutExpo
+  duration: 0
+
+mouse:
+  hide_when_typing: false
+
+cursor:
+  style: Block
+  unfocused_hollow: true
+
+live_config_reload: true
+
+shell:
+  program: /bin/bash
+
+

@@ -1,0 +1,7 @@
+#!/bin/bash
+# Auto-start X on first TTY; guard DISPLAY for strict shells
+if [ -z "${DISPLAY:-}" ] && [ "${XDG_VTNR:-0}" -eq 1 ]; then
+  exec startx
+fi
+
+

@@ -677,12 +677,12 @@ CHROOT_CFG
 
 # Post-chroot tweaks: add configs, xinitrc, theming, remove docs/translations if requested
 # write .xinitrc and minimal WM configs into /mnt/home/$USERNAME
+USER_HOME="/home/${USERNAME}"
 arch-chroot /mnt /bin/bash -e <<CHROOT2
 set -euo pipefail
 # create user home defaults
-USER_HOME="/home/${USERNAME}"
-mkdir -p "\$USER_HOME"
-chown ${USERNAME}:${USERNAME} "\$USER_HOME"
+mkdir -p "$USER_HOME"
+chown ${USERNAME}:${USERNAME} "$USER_HOME"
 
 # generate .xinitrc for non-display-manager setups
 if [ "${WM}" != "none" ]; then

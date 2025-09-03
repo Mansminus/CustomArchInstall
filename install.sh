@@ -527,8 +527,8 @@ cp -r "$(dirname "$0")/configs" /mnt/tmp/installer/ 2>/dev/null || true
 if [ ! -d /mnt/tmp/installer/configs ]; then
   # fallback: download from repo if not running from repo checkout
   mkdir -p /mnt/tmp/installer
-  curl -L "https://github.com/Mansminus/CustomArchInstall/archive/refs/heads/main.zip" -o /tmp/installer.zip
-  unzip -q /tmp/installer.zip -d /tmp
+  curl -L "https://github.com/Mansminus/CustomArchInstall/archive/refs/heads/main.tar.gz" -o /tmp/installer.tar.gz
+  tar -xzf /tmp/installer.tar.gz -C /tmp
   cp -r /tmp/CustomArchInstall-main/configs /mnt/tmp/installer/
 fi
 # Verify configs are staged

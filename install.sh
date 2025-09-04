@@ -688,7 +688,7 @@ CHROOT_CFG
 # Post-chroot tweaks: add configs, xinitrc, theming, remove docs/translations if requested
 # write .xinitrc and minimal WM configs into /mnt/home/$USERNAME
 USER_HOME="/home/${USERNAME}"
-arch-chroot /mnt /usr/bin/env WM="${WM}" USERNAME="${USERNAME}" OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" STRIP_LOCALE_YES="${STRIP_LOCALE_YES}" ENABLE_SSH="${ENABLE_SSH}" VM="${VM}" GAMING="${GAMING}" /bin/bash -e <<'CHROOT2'
+arch-chroot /mnt /usr/bin/env WM="${WM}" USERNAME="${USERNAME}" OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" SELECTED_LOCALE="${SELECTED_LOCALE}" TIMEZONE="${TIMEZONE}" GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" STRIP_LOCALE_YES="${STRIP_LOCALE_YES}" ENABLE_SSH="${ENABLE_SSH}" VM="${VM}" GAMING="${GAMING}" /bin/bash -e <<'CHROOT2'
 set -euo pipefail
 # Define user home inside chroot to avoid unbound variable with 'set -u'
 USER_HOME="/home/${USERNAME}"

@@ -363,7 +363,7 @@ BASE_PKGS+=(grub os-prober efibootmgr)
 
 # Theming and appearance packages (repo-only)
 THEME_PKGS=(papirus-icon-theme)
-THEME_PKGS+=(breeze breeze-gtk lxappearance qt5ct)
+THEME_PKGS+=(breeze breeze-gtk xcursor-breeze lxappearance qt5ct)
 # Essential GUI applications for easy desktop use
 THEME_PKGS+=(ristretto vlc evince galculator flameshot)
 # System tools with GUI
@@ -390,7 +390,7 @@ THEME_PKGS+=(mtpaint)
 DESKTOP_PKGS=()
 if [ "$WM" = "openbox" ]; then
   DESKTOP_PKGS+=(openbox obconf-qt thunar thunar-archive-plugin)
-  DESKTOP_PKGS+=(file-roller geany)
+  DESKTOP_PKGS+=(file-roller geany alacritty)
 elif [ "$WM" = "i3" ]; then
   DESKTOP_PKGS+=(i3-wm i3status i3lock alacritty thunar thunar-archive-plugin)
   DESKTOP_PKGS+=(file-roller geany)
@@ -405,6 +405,9 @@ fi
 if [ "$WM" != "none" ]; then
   DESKTOP_PKGS+=(lightdm lightdm-gtk-greeter)
 fi
+
+# Ensure robust terminal availability regardless of WM
+DESKTOP_PKGS+=(xfce4-terminal xterm)
 
 # browser choice - balance between performance and functionality
 if [ "$TOTAL_RAM_MB" -lt 1024 ]; then
@@ -679,6 +682,15 @@ else
   echo "Warning: missing qt5ct template; skipping"
 fi
 
+# Set default cursor theme system-wide
+mkdir -p /usr/share/icons/default
+cat > /usr/share/icons/default/index.theme <<CURSORS
+[Icon Theme]
+Name=Default
+Comment=Default Cursor Theme
+Inherits=Breeze
+CURSORS
+
 # --- Browser already installed in outer pacstrap
 
 # --- Clean pacman cache if desired (we'll do final cleanup)
@@ -760,6 +772,7 @@ if [ "${WM}" = "openbox" ]; then
   # Copy autostart and menu from templates if available
   if [ -f /tmp/installer/configs/user/openbox/autostart ]; then
     cp /tmp/installer/configs/user/openbox/autostart "$USER_HOME/.config/openbox/autostart"
+    chmod +x "$USER_HOME/.config/openbox/autostart" || true
   else
     echo "Warning: missing openbox autostart template; skipping"
   fi
@@ -775,6 +788,18 @@ if [ "${WM}" = "openbox" ]; then
   else
     echo "Warning: missing openbox rc.xml template; skipping"
   fi
+
+  # Ensure X session exports theme variables so autostart can use them
+  cat > "$USER_HOME/.xprofile" <<XPROFILE
+export OPENBOX_THEME="${OPENBOX_THEME}"
+export GTK_THEME="${GTK_THEME_NAME}"
+export QT_QPA_PLATFORMTHEME="qt5ct"
+export QT_AUTO_SCREEN_SCALE_FACTOR=0
+export XCURSOR_THEME=Breeze
+export XCURSOR_SIZE=24
+export PATH="/usr/local/bin:$PATH"
+XPROFILE
+  chown ${USERNAME}:${USERNAME} "$USER_HOME/.xprofile" || true
 
   chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.config/openbox"
 fi
@@ -808,7 +833,7 @@ client.focused_inactive \$inactive-bg-color \$inactive-bg-color \$inactive-text-
 client.urgent           \$urgent-bg-color   \$urgent-bg-color  \$text-color         \$indicator-color
 
 # Key bindings
-bindsym \$mod+Return exec alacritty
+bindsym \$mod+Return exec terminal
 bindsym \$mod+d exec rofi -show drun
 bindsym \$mod+Shift+d exec rofi -show run
 bindsym \$mod+Shift+q kill
@@ -925,6 +950,16 @@ exec --no-startup-id sh -c 'if [ -f /usr/share/backgrounds/arch-custom/default.j
 I3CFG
   chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.config/i3"
 fi
+
+# Create a terminal launcher that picks the first available emulator
+cat > /usr/local/bin/terminal <<'TERM'
+#!/bin/sh
+for t in alacritty xfce4-terminal xterm st urxvt kitty; do
+  if command -v "$t" >/dev/null 2>&1; then exec "$t" "$@"; fi
+done
+exec xterm "$@"
+TERM
+chmod +x /usr/local/bin/terminal
 
 # --- User Theme Configuration ---
 # Create user-specific theme directories

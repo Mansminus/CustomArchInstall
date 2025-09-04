@@ -680,6 +680,8 @@ CHROOT_CFG
 USER_HOME="/home/${USERNAME}"
 arch-chroot /mnt /usr/bin/env WM="${WM}" USERNAME="${USERNAME}" OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" GTK_THEME_NAME="${GTK_THEME_NAME}" ICON_THEME_NAME="${ICON_THEME_NAME}" STRIP_LOCALE_YES="${STRIP_LOCALE_YES}" ENABLE_SSH="${ENABLE_SSH}" VM="${VM}" GAMING="${GAMING}" /bin/bash -e <<'CHROOT2'
 set -euo pipefail
+# Define user home inside chroot to avoid unbound variable with 'set -u'
+USER_HOME="/home/${USERNAME}"
 # create user home defaults
 mkdir -p "$USER_HOME"
 chown ${USERNAME}:${USERNAME} "$USER_HOME"
@@ -743,8 +745,8 @@ fi
 
 # Enhanced i3 configuration
 if [ "${WM}" = "i3" ]; then
-  mkdir -p "\$USER_HOME/.config/i3"
-  cat > "\$USER_HOME/.config/i3/config" <<'I3CFG'
+  mkdir -p "$USER_HOME/.config/i3"
+  cat > "$USER_HOME/.config/i3/config" <<'I3CFG'
 # i3 config with enhanced theming and shortcuts
 set \$mod Mod4
 
@@ -885,7 +887,7 @@ exec --no-startup-id dunst
 exec --no-startup-id blueman-applet
 exec --no-startup-id sh -c 'if [ -f /usr/share/backgrounds/arch-custom/default.jpg ]; then feh --bg-scale /usr/share/backgrounds/arch-custom/default.jpg; else xsetroot -solid "#1a1a1a"; fi'
 I3CFG
-  chown -R ${USERNAME}:${USERNAME} "\$USER_HOME/.config/i3"
+  chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.config/i3"
 fi
 
 # --- User Theme Configuration ---
@@ -970,7 +972,7 @@ chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.icons"
 chown ${USERNAME}:${USERNAME} "$USER_HOME/.gtkrc-2.0"
 
 # Create .bashrc additions for theme environment variables
-cat >> "\$USER_HOME/.bashrc" <<'BASHTHEME'
+cat >> "$USER_HOME/.bashrc" <<'BASHTHEME'
 
 # Theme environment variables
 export GTK_THEME="Breeze-Dark"
@@ -996,13 +998,13 @@ alias search-software='pacman -Ss'
 alias update-system='sudo pacman -Syu'
 
 BASHTHEME
-chown ${USERNAME}:${USERNAME} "\$USER_HOME/.bashrc"
+chown ${USERNAME}:${USERNAME} "$USER_HOME/.bashrc"
 
 # Create user directories for better UX
-mkdir -p "\$USER_HOME/Pictures" "\$USER_HOME/Documents" "\$USER_HOME/Downloads"
-mkdir -p "\$USER_HOME/Desktop" "\$USER_HOME/Music" "\$USER_HOME/Videos"
-chown -R ${USERNAME}:${USERNAME} "\$USER_HOME/Pictures" "\$USER_HOME/Documents" "\$USER_HOME/Downloads"
-chown -R ${USERNAME}:${USERNAME} "\$USER_HOME/Desktop" "\$USER_HOME/Music" "\$USER_HOME/Videos"
+mkdir -p "$USER_HOME/Pictures" "$USER_HOME/Documents" "$USER_HOME/Downloads"
+mkdir -p "$USER_HOME/Desktop" "$USER_HOME/Music" "$USER_HOME/Videos"
+chown -R ${USERNAME}:${USERNAME} "$USER_HOME/Pictures" "$USER_HOME/Documents" "$USER_HOME/Downloads"
+chown -R ${USERNAME}:${USERNAME} "$USER_HOME/Desktop" "$USER_HOME/Music" "$USER_HOME/Videos"
 
 # Set up XDG user directories properly
 su - ${USERNAME} -c "xdg-user-dirs-update" || true

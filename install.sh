@@ -696,10 +696,24 @@ if [ "${WM}" != "none" ]; then
     openbox|*) EXEC_WM_CMD='exec openbox-session' ;;
   esac
   # do NOT export EXEC_WM_CMD to avoid accidental expansion in strict shells
-  cp /tmp/installer/configs/user/xinitrc.tmpl /tmp/.xinitrc.tmpl
-  OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" envsubst '${OPENBOX_THEME} ${SELECTED_KBD}' < /tmp/.xinitrc.tmpl > "$USER_HOME/.xinitrc"
+  if [ -f /tmp/installer/configs/user/xinitrc.tmpl ]; then
+    cp /tmp/installer/configs/user/xinitrc.tmpl /tmp/.xinitrc.tmpl
+    OPENBOX_THEME="${OPENBOX_THEME}" SELECTED_KBD="${SELECTED_KBD}" envsubst '${OPENBOX_THEME} ${SELECTED_KBD}' < /tmp/.xinitrc.tmpl > "$USER_HOME/.xinitrc"
+    rm -f /tmp/.xinitrc.tmpl
+  else
+    echo "Warning: missing xinitrc template; generating minimal .xinitrc"
+    cat > "$USER_HOME/.xinitrc" <<'XINITRC_MIN'
+#!/bin/sh
+# Minimal X init
+if command -v xrdb >/dev/null 2>&1 && [ -f "$HOME/.Xresources" ]; then
+  xrdb -merge "$HOME/.Xresources"
+fi
+if command -v setxkbmap >/dev/null 2>&1; then
+  setxkbmap ${SELECTED_KBD}
+fi
+XINITRC_MIN
+  fi
   echo "${EXEC_WM_CMD}" >> "$USER_HOME/.xinitrc"
-  rm -f /tmp/.xinitrc.tmpl
   chown ${USERNAME}:${USERNAME} "$USER_HOME/.xinitrc"
   chmod +x "$USER_HOME/.xinitrc"
 fi
@@ -733,12 +747,24 @@ if [ "${WM}" = "openbox" ]; then
     echo "Installed ${OPENBOX_THEME} theme successfully"
   fi
 
-  # Copy autostart and menu from templates
-  cp /tmp/installer/configs/user/openbox/autostart "$USER_HOME/.config/openbox/autostart"
-  cp /tmp/installer/configs/user/openbox/menu.xml "$USER_HOME/.config/openbox/menu.xml"
+  # Copy autostart and menu from templates if available
+  if [ -f /tmp/installer/configs/user/openbox/autostart ]; then
+    cp /tmp/installer/configs/user/openbox/autostart "$USER_HOME/.config/openbox/autostart"
+  else
+    echo "Warning: missing openbox autostart template; skipping"
+  fi
+  if [ -f /tmp/installer/configs/user/openbox/menu.xml ]; then
+    cp /tmp/installer/configs/user/openbox/menu.xml "$USER_HOME/.config/openbox/menu.xml"
+  else
+    echo "Warning: missing openbox menu template; skipping"
+  fi
 
-  # Render rc.xml from template with selected theme and username
-  OPENBOX_THEME="${OPENBOX_THEME}" USERNAME="${USERNAME}" envsubst '${OPENBOX_THEME} ${USERNAME}' < /tmp/installer/configs/user/openbox/rc.xml.tmpl > "$USER_HOME/.config/openbox/rc.xml"
+  # Render rc.xml from template with selected theme and username if available
+  if [ -f /tmp/installer/configs/user/openbox/rc.xml.tmpl ]; then
+    OPENBOX_THEME="${OPENBOX_THEME}" USERNAME="${USERNAME}" envsubst '${OPENBOX_THEME} ${USERNAME}' < /tmp/installer/configs/user/openbox/rc.xml.tmpl > "$USER_HOME/.config/openbox/rc.xml"
+  else
+    echo "Warning: missing openbox rc.xml template; skipping"
+  fi
 
   chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.config/openbox"
 fi
@@ -969,7 +995,7 @@ fi
 # Set ownership for all user configuration files
 chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.config"
 chown -R ${USERNAME}:${USERNAME} "$USER_HOME/.icons"
-chown ${USERNAME}:${USERNAME} "$USER_HOME/.gtkrc-2.0"
+[ -f "$USER_HOME/.gtkrc-2.0" ] && chown ${USERNAME}:${USERNAME} "$USER_HOME/.gtkrc-2.0" || true
 
 # Create .bashrc additions for theme environment variables
 cat >> "$USER_HOME/.bashrc" <<'BASHTHEME'

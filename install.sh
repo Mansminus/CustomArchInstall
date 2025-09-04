@@ -1129,7 +1129,11 @@ if [ "$WM" = "openbox" ] && [ -n "$OPENBOX_THEME" ]; then
   THEME_MSG="\nOpenbox theme: ${OPENBOX_THEME}"
 fi
 
-dialog --title "Installation finished" --msgbox "Installation complete!\n\nUser: ${USERNAME}\nLocale: ${SELECTED_LOCALE}\nKeyboard: ${SELECTED_KBD}\nTimezone: ${TIMEZONE}\nWM: ${WM}${THEME_MSG}\nRAM detected: ${TOTAL_RAM_MB} MB\n\nTheme: Breeze-Dark + Papirus-Dark + Breeze cursors\n\nA log has been saved to /var/log/arch-installer.log on the installed system.\n\nReboot now." 18 75
+dialog --title "Installation finished" --msgbox "Installation complete!\n\nUser: ${USERNAME}\nLocale: ${SELECTED_LOCALE}\nKeyboard: ${SELECTED_KBD}\nTimezone: ${TIMEZONE}\nWM: ${WM}${THEME_MSG}\nRAM detected: ${TOTAL_RAM_MB} MB\n\nTheme: Breeze-Dark + Papirus-Dark + Breeze cursors\n\nA log has been saved to /var/log/arch-installer.log on the installed system.\n\nThe machine will reboot now." 18 75
 
-clear
-echo "Installation complete. Reboot the machine to boot into your new Arch system."
+# Unmount, sync, and reboot automatically
+umount -R /mnt 2>/dev/null || true
+swapoff -a 2>/dev/null || true
+sync
+sleep 2
+reboot

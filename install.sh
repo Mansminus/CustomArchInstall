@@ -549,7 +549,17 @@ CHROOT_EXIT_ON_ERROR() { echo "Chroot step failed"; exit 1; }
 # write timezone, locale, vconsole will be created by outer here via heredoc
 CHROOT
 # Inject locale/timezone/etc inside chroot with arch-chroot heredoc
-arch-chroot /mnt /bin/bash -e <<CHROOT_CFG
+arch-chroot /mnt /usr/bin/env \
+  SELECTED_LOCALE="${SELECTED_LOCALE}" \
+  SELECTED_KBD="${SELECTED_KBD}" \
+  TIMEZONE="${TIMEZONE}" \
+  USERNAME="${USERNAME}" \
+  PASS1="${PASS1}" \
+  WM="${WM}" \
+  GAMING="${GAMING}" \
+  ENABLE_SSH="${ENABLE_SSH}" \
+  VM="${VM}" \
+  /bin/bash -e <<'CHROOT_CFG'
 set -euo pipefail
 # --- Locale / Timezone / Keymap ---
 echo "${SELECTED_LOCALE} UTF-8" >> /etc/locale.gen
